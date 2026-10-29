@@ -30,6 +30,7 @@
       for (const w of this.wheels) { w.comp = w.prevComp = 0; w.contact = false; }
       this.grounded = 0; this.bodyContact = false; this.airTime = 0; this.flaps = 0; this.jetLevel = 0;
       this.fuel = 1; this.hullPrev = null; this.drifting = false; this.driftTimer = 0; this.driftDir = 0;
+      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0;
     }
 
     step(dt, inp, world) {
@@ -47,7 +48,7 @@
       const { grounded, loopDir } = V.senseWheels(this, world, rayLen, down, up);
 
       // 2. arcade state
-      A.updateLanding(this, grounded, dt);
+      A.updateLanding(t, this, grounded, dt);
       const beta = Math.atan2(M.dot(vel, right), Math.max(1, Math.abs(vf))); // sideways slide angle
       this.prevBeta = this.slip; this.slip = beta;
       A.updateDrift(t, this, inp, grounded, vf, beta, dt);
