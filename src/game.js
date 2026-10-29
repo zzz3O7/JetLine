@@ -13,7 +13,8 @@ let levelIdx = Math.min(JC.levels.length - 1, Math.max(0, store.get('level', 0) 
 let level, track, race;
 // input settings live with the game (the physics never reads them); saved together with the tuning
 const INPUT_DEFAULTS = { airPitchInvert: 1 };   // 1 = S tilts the nose up in the air (flight-sim)
-const ALL_DEFAULTS = Object.assign({}, JC.defaultTuning, INPUT_DEFAULTS);
+const SOUND_DEFAULTS = { volMaster: 0.8, volJet: 0.45, volEngine: 1, volWind: 1, volSkid: 0.8 };
+const ALL_DEFAULTS = Object.assign({}, JC.defaultTuning, INPUT_DEFAULTS, SOUND_DEFAULTS);
 const tuning = Object.assign({}, ALL_DEFAULTS, store.get('tuning', {}));
 const car = new JC.Car(tuning);
 const DT = 1 / 240;
@@ -307,7 +308,9 @@ const skids = (() => {
     head = (head + 1) % MAX; count = Math.min(MAX, count + 1);
   }
   return {
+    intensity: 0, // 0..1, how hard the tires are sliding right now (drives the skid sound)
     update() {
+      let loudest = 0;
       car.wheels.forEach((w, i) => {
         const slideV = Math.abs(w.slipV || 0);
         const rear = !w.front;
@@ -317,6 +320,7 @@ const skids = (() => {
           if (car.drifting && rear) k = Math.max(k, 0.55);                          // drifting rear tires
           if (w.brakeOn && Math.abs(w.longV) > 6) k = Math.max(k, 0.35);           // hard braking
         }
+        if (k > loudest) loudest = k;
         if (k <= 0) { last[i] = null; return; }
         const alpha = Math.min(0.75, 0.2 + k * 0.6);
         const p = w.cp, n = w.n;
@@ -329,6 +333,7 @@ const skids = (() => {
         }
         last[i] = { p, n, a: alpha };
       });
+      this.intensity = Math.min(1, loudest);
       if (hi >= 0) {
         geo.setDrawRange(0, count * 6);
         for (const attr of [pa, ca]) {
@@ -467,19 +472,30 @@ const audio = {
       this.engF = ctx.createBiquadFilter(); this.engF.type = 'lowpass'; this.engF.frequency.value = 500;
       this.engG = ctx.createGain(); this.engG.gain.value = 0;
       this.eng.connect(this.engF).connect(this.engG).connect(master); this.eng.start();
+      // tire screech: narrow band of noise whose pitch wobbles a little
+      this.skidF = ctx.createBiquadFilter(); this.skidF.type = 'bandpass'; this.skidF.frequency.value = 1600; this.skidF.Q.value = 4;
+      this.skidG = ctx.createGain(); this.skidG.gain.value = 0;
+      const wobble = ctx.createOscillator(), wobbleAmt = ctx.createGain();
+      wobble.frequency.value = 23; wobbleAmt.gain.value = 140;
+      wobble.connect(wobbleAmt).connect(this.skidF.frequency); wobble.start();
+      noise().connect(this.skidF).connect(this.skidG).connect(master);
     } catch (e) { this.ctx = null; }
   },
   update() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime, k = 0.06;
     const m = this.muted ? 0 : 1, v = car.speed;
-    this.jetG.gain.setTargetAtTime(m * car.jetLevel * 0.55, t, k);
+    this.master.gain.setTargetAtTime(0.6 * tuning.volMaster, t, k);
+    this.jetG.gain.setTargetAtTime(m * tuning.volJet * car.jetLevel * 0.55, t, k);
     this.jetF.frequency.setTargetAtTime(500 + car.jetLevel * 900 + v * 6, t, k);
-    this.windG.gain.setTargetAtTime(m * Math.min(0.35, v * v * 0.00012 + car.flaps * 0.08), t, k);
+    this.windG.gain.setTargetAtTime(m * tuning.volWind * Math.min(0.35, v * v * 0.00012 + car.flaps * 0.08), t, k);
     this.windF.frequency.setTargetAtTime(250 + v * 18, t, k);
     const fv = Math.abs(M.dot(car.vel, car.fwd));
     this.eng.frequency.setTargetAtTime(45 + fv * 4.5 + input.throttle * 12, t, k);
-    this.engG.gain.setTargetAtTime(m * (0.04 + input.throttle * 0.08) * (car.grounded ? 1 : 0.6), t, k);
+    this.engG.gain.setTargetAtTime(m * tuning.volEngine * (0.04 + input.throttle * 0.08) * (car.grounded ? 1 : 0.6), t, k);
+    const skid = v > 3 ? skids.intensity : 0;
+    this.skidG.gain.setTargetAtTime(m * tuning.volSkid * skid * 0.3, t, 0.03);
+    this.skidF.frequency.setTargetAtTime(1300 + Math.min(v, 60) * 10, t, k);
   },
 };
 
@@ -520,6 +536,11 @@ $('bAgain').addEventListener('click', () => restart());
 // slider definitions: key -> [label, min, max, step]; grouped in the panel like JC.tuningGroups
 const SLIDERS = {
   airPitchInvert: ['Flight-sim pitch (1 = S is nose up)', 0, 1, 1],
+  volMaster: ['Master volume', 0, 1, 0.05],
+  volJet: ['Jet', 0, 1, 0.05],
+  volEngine: ['Engine', 0, 1, 0.05],
+  volWind: ['Wind', 0, 1, 0.05],
+  volSkid: ['Tire skids', 0, 1, 0.05],
   gravity: ['Gravity (m/s²)', 3, 20, 0.1],
   engineForce: ['Engine force (N)', 2000, 30000, 250],
   engineTopSpeed: ['Engine top speed (m/s)', 15, 120, 1],
@@ -564,7 +585,7 @@ const SLIDERS = {
   loopAssist: ['Loop steering assist', 0, 1, 0.05],
 };
 const PANEL_GROUPS = [
-  ['Controls', INPUT_DEFAULTS], ['Chassis', JC.tuningGroups.chassis], ['Engine & brakes', JC.tuningGroups.engine],
+  ['Controls', INPUT_DEFAULTS], ['Sound', SOUND_DEFAULTS], ['Chassis', JC.tuningGroups.chassis], ['Engine & brakes', JC.tuningGroups.engine],
   ['Jet', JC.tuningGroups.jet], ['Suspension', JC.tuningGroups.suspension], ['Tires & steering', JC.tuningGroups.tires],
   ['Aerodynamics', JC.tuningGroups.aero], ['Air control', JC.tuningGroups.airControl], ['Drift', JC.tuningGroups.drift],
   ['Assists', JC.tuningGroups.assists],

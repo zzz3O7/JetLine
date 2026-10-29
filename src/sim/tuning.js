@@ -16,9 +16,9 @@
     },
     jet: {
       jetThrust: 17000,       // N, the main toy
-      jetUnlimited: 1,        // 1 = infinite jet (testing), 0 = fuel that recharges on the ground
-      jetCapacity: 5,         // seconds of jet on a full tank
-      jetRecharge: 10,        // seconds to refill an empty tank while driving
+      jetUnlimited: 0,        // 1 = infinite jet (testing), 0 = fuel that recharges on the ground
+      jetCapacity: 2,         // seconds of jet on a full tank
+      jetRecharge: 8,         // seconds to refill an empty tank while driving
     },
     suspension: {
       springK: 15000,         // N/m per wheel
@@ -61,7 +61,7 @@
       driftKeep: 0.75,        // share of tire scrub ignored while drifting (keeps speed)
       driftPower: 0.7,        // share of engine force that still pushes during a drift
       driftMinSpeed: 14,      // m/s needed to start a drift
-      autoDrift: 0,           // 1 = drifts also start by themselves (already sliding, or landing sideways)
+      autoDrift: 1,           // 1 = drifts also start by themselves (already sliding, or landing sideways)
       autoDriftAngle: 0.14,   // sideways slide (rad) that starts an auto drift
     },
     assists: {
