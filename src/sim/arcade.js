@@ -5,12 +5,34 @@
   'use strict';
   const M = JC.M;
   const ASSIST_SLOPE = 0.07;   // ground normal y range over which assists fade out on slopes
+  const STEER_LIMIT_AFTER_DRIFT = 1.0;   // s
+  const FRONT_AXLE = JC.Vehicle.WHEELS[0].z, REAR_AXLE = JC.Vehicle.WHEELS[2].z;   // m ahead of the center of mass
 
   const Arcade = {
     // A short window after touching down from a real jump (not a bump), used to catch sideways landings as drifts.
     updateLanding(t, car, grounded, dt) {
       if (grounded > 0 && car.airTime > t.landingMinAir) car.landTimer = 0.6;
       car.landTimer = Math.max(0, (car.landTimer || 0) - dt);
+    },
+
+    // Steering limit: full steering asks for more than the front tires can give at speed, which only scrubs
+    // them (understeer) and can tip the car into a slide. This trims the steering angle to at most
+    // steerLimit x slipPeak past the direction the front axle is actually moving, so full steering is the
+    // tightest grip turn. It only ever reduces steering (never adds countersteer), and is off while
+    // drifting (the drift assists own the car then), for STEER_LIMIT_AFTER_DRIFT s after a drift so a flick
+    // into the next drift stays the player's, when slow, and in reverse.
+    limitSteer(t, car, steerAng, fwd, right, vf) {
+      if (t.steerLimit <= 0 || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
+      const vF = M.add(car.vel, M.cross(car.w, M.mul(fwd, FRONT_AXLE)));
+      const dir = Math.atan2(M.dot(vF, right), Math.max(M.dot(vF, fwd), 4)); // same low-speed floor as the tire model
+      let L = t.steerLimit * t.slipPeak;
+      if (t.steerLimitRear > 0) {
+        // rear tires past their peak in this turn (the tail stepping out): steer less, so the rear can hold
+        const vR = M.add(car.vel, M.cross(car.w, M.mul(fwd, REAR_AXLE)));
+        const rear = -Math.sign(steerAng) * Math.atan2(M.dot(vR, right), Math.max(M.dot(vR, fwd), 4)) / t.slipPeak;
+        L *= Math.max(0, 1 - t.steerLimitRear * Math.max(0, rear - 0.9));
+      }
+      return steerAng > 0 ? Math.min(steerAng, Math.max(0, dir + L)) : Math.max(steerAng, Math.min(0, dir - L));
     },
 
     // Drift state machine.
@@ -26,6 +48,7 @@
         car.drifting = true; car.driftDir = dir; car.driftTimer = 0;
         car.driftAngle = Math.min(t.driftMaxAngle, angle);
       };
+      car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
         car.slideTimer = Math.abs(beta) > t.autoDriftAngle && grounded >= 2 ? (car.slideTimer || 0) + dt : 0;

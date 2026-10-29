@@ -559,6 +559,8 @@ const SLIDERS = {
   slipPeak: ['Slip angle to full grip', 0.03, 0.4, 0.01],
   steerMax: ['Steering angle (rad)', 0.2, 0.9, 0.01],
   steerFalloff: ['Steering falloff with speed', 0, 0.12, 0.002],
+  steerLimit: ['Steering limit: front grip (x slip peak, 0 = off)', 0, 3, 0.05],
+  steerLimitRear: ['Steering limit: protect rear grip (0 = off)', 0, 10, 0.5],
   dragCoef: ['Air drag', 0.4, 4, 0.05],
   downforce: ['Downforce', 0, 8, 0.1],
   airbrakeDrag: ['Air brake drag', 0, 15, 0.25],
