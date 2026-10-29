@@ -312,11 +312,13 @@ const skids = (() => {
     update() {
       let loudest = 0;
       car.wheels.forEach((w, i) => {
-        const slideV = Math.abs(w.slipV || 0);
+        const slideV = Math.abs(w.slipV || 0), over = Math.abs(w.slip || 0);   // over = slip angle / grip peak
         const rear = !w.front;
         let k = 0;
         if (w.contact && w.cp) {
-          k = Math.max(k, (slideV - 2.2) / 5);                                      // sideways slide
+          // marks only past the grip limit: a grip turn runs the rear tires near 1x their peak slip angle,
+          // and full keyboard steering pushes the fronts to ~2.5x (understeer scrub), so those stay clean
+          if (slideV > 1.5) k = Math.max(k, rear ? (over - 1.3) / 2 : (over - 3) / 3);
           if (car.drifting && rear) k = Math.max(k, 0.55);                          // drifting rear tires
           if (w.brakeOn && Math.abs(w.longV) > 6) k = Math.max(k, 0.35);           // hard braking
         }
@@ -562,7 +564,7 @@ const SLIDERS = {
   airbrakeDrag: ['Air brake drag', 0, 15, 0.25],
   airbrakeHeight: ['Air brake nose-up lever', -0.5, 1.5, 0.05],
   airbrakeArm: ['Air brake distance behind center', 0, 3, 0.05],
-  airbrakeDownforce: ['Air brake extra grip', 0, 8, 0.25],
+  airbrakeDownforce: ['Air brake extra grip', 0, 16, 0.25],
   wingLift: ['Wing lift (air brakes open)', 0, 40, 0.5],
   bodyLift: ['Body lift', 0, 6, 0.1],
   wingCenter: ['Lift position (− = rear, stable)', -2, 1, 0.05],

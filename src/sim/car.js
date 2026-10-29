@@ -64,7 +64,7 @@
         const tire = V.tireForce(t, this, wh, tireCtx, mods, inp, fs);
         forces.at(tire.force, wh.mount); // at mount height, which keeps the car from tipping over
         wh.spin += tire.vl * dt / t.wheelRadius;
-        wh.cp = tire.cpt; wh.n = tire.n; wh.slipV = tire.vs; wh.longV = tire.vl; wh.brakeOn = inp.brake > 0.5 && vf > 3;
+        wh.cp = tire.cpt; wh.n = tire.n; wh.slipV = tire.vs; wh.longV = tire.vl; wh.slip = tire.slip; wh.brakeOn = inp.brake > 0.5 && vf > 3;
       }
       this.grounded = grounded;
       this.inLoop = !!loopDir;

@@ -41,7 +41,7 @@
       airbrakeDrag: 3.0,      // extra drag at the air brake flaps
       airbrakeHeight: 0,      // flap height above the center of mass (higher = air brakes pitch the nose up by themselves)
       airbrakeArm: 0.5,       // flap distance behind the center of mass (longer = air brakes resist rotation more)
-      airbrakeDownforce: 3.0, // extra ground grip while the flaps are open
+      airbrakeDownforce: 8,   // extra ground grip while the flaps are open: hold the air brakes for a tight grip turn
       bodyLift: 0.8,          // flat-plate lift of the body
       wingLift: 12,           // extra lift while the air brakes (wings) are open: glide / fly
       wingCenter: 0,          // where lift acts along the car; behind the center = self-stabilizing pitch that fights flips at speed
