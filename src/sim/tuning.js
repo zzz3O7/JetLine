@@ -34,6 +34,8 @@
       slipPeak: 0.12,         // slip angle (rad) where a tire reaches full grip
       steerMax: 0.55,         // steering angle (rad) at standstill
       steerFalloff: 0.045,    // steering reduces with speed
+      steerLimit: 1.1,        // front wheels steer at most this many slipPeaks past where the front axle is moving (0 = off)
+      steerLimitRear: 4,      // ...and less while the rear tires are past their peak, so the tail holds (0 = off)
     },
     aero: {
       dragCoef: 1.6,          // F = k * v^2

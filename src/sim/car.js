@@ -1,5 +1,6 @@
 // Jetline sim - the car: a rigid body stepped through the layers in a fixed order.
 //
+//   0. steering   angle trimmed to what the tires can hold (arcade.js)
 //   1. sense      raycast wheels                          (vehicle.js)
 //   2. arcade     landing window, drift state             (arcade.js)
 //   3. wheels     suspension + tire forces                (vehicle.js, drift changes tires via arcade mods)
@@ -30,7 +31,7 @@
       for (const w of this.wheels) { w.comp = w.prevComp = 0; w.contact = false; }
       this.grounded = 0; this.bodyContact = false; this.airTime = 0; this.flaps = 0; this.jetLevel = 0;
       this.fuel = 1; this.hullPrev = null; this.drifting = false; this.driftTimer = 0; this.driftDir = 0;
-      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0;
+      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99;
     }
 
     step(dt, inp, world) {
@@ -40,7 +41,7 @@
       const forces = new JC.Forces(pos, [0, -t.gravity * this.mass, 0]);
       const vf = M.dot(vel, fwd);
       const speed = M.len(vel);
-      const steerAng = (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff);
+      const steerAng = A.limitSteer(t, this, (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff), fwd, right, vf);
       const rayLen = t.suspTravel + t.wheelRadius;
 
       // 1. sense
