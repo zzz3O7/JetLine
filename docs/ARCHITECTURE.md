@@ -83,3 +83,7 @@ Other tests measure specific behavior: `spin.js` (slides and spin-outs), `drift.
 `landing*.js` (bounce and drift on landings), `edges.js` (ramp edge hits), `flip3.js` (air rotation vs speed),
 `fly.js` (gliding and flight), `park.js` (skate park features), `loopnoassist.js`, `simvar.js` (an autopilot
 finishes Sky Strip), `fuzz.js` (random input: no NaNs, no tunneling).
+
+GitHub Actions (`.github/workflows/test.yml`) runs the same check on every pull request. It pins Node 22,
+because the baseline is full precision and a different JavaScript engine could round `Math.sin` and friends
+differently in the last bits; if a Node upgrade ever makes the check fail with no code change, re-record the baseline.

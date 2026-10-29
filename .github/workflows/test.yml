@@ -1,0 +1,30 @@
+# Runs the physics regression tests on every pull request and on pushes to main.
+# The tests compare full-precision simulation output against test/baseline/all.txt,
+# so the Node major version is pinned: Math.sin & co. may differ in the last bits between engines.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  physics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build the page
+        run: node build.js
+      - name: Physics tests (must match the recorded baseline)
+        run: |
+          sh test/all.sh > test-output.txt 2>&1
+          if diff -u test/baseline/all.txt test-output.txt > baseline.diff; then
+            echo "Behavior unchanged."
+          else
+            echo "::error::Simulation output differs from test/baseline/all.txt. If the change is intended, re-record the baseline: sh test/all.sh > test/baseline/all.txt"
+            head -n 80 baseline.diff
+            exit 1
+          fi
