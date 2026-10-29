@@ -56,7 +56,7 @@
     },
     drift: {
       driftGrip: 0.5,         // rear grip multiplier while drifting
-      driftControl: 0,        // 0 = holding A/D turns the angle, no input holds it; 1 = steering sets the angle, release straightens
+      driftControl: 1,        // 0 = holding A/D turns the angle, no input holds it; 1 = steering sets the angle, release straightens
       driftKick: 0,           // rad: a brake-tap drift starts at least this sideways
       driftSteerRate: 3,      // rad/s: how fast A/D change the drift angle (driftControl 0)
       driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
@@ -67,7 +67,7 @@
       driftPower: 0.7,        // share of engine force that still pushes during a drift
       driftMinSpeed: 14,      // m/s needed to start a drift
       autoDrift: 1,           // 1 = drifts also start by themselves (a lasting slide, or landing sideways)
-      autoDriftAngle: 0.26,   // rad (about 15 degrees) of slide that can start an auto drift
+      autoDriftAngle: 0.12,   // rad (about 7 degrees) of slide that can start an auto drift
       autoDriftHold: 0.12,    // s the slide must last (bumps make short spikes)
       landingMinAir: 0.5,     // s in the air before touching down counts as a landing (not a bump)
     },
