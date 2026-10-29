@@ -1,0 +1,189 @@
+<title>Jetline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Saira+Semi+Condensed:wght@400;600;700&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas, HUD plates pinned to the corners, touch pads along the bottom edge.
+   Single visual world (sky + graphite HUD plates) on purpose, so colors are fixed rather than theme-switched. */
+:root {
+  --plate: rgba(16, 24, 34, 0.66);
+  --plate-solid: #141c26;
+  --ink: #eef3f6;
+  --ink-dim: #9fb0bd;
+  --signal: #ff6b1f;     /* hazard orange: jet, accents */
+  --gate: #3fd9c8;       /* checkpoint cyan */
+  --good: #5fe08f;
+  --bad: #ff5c5c;
+  --font-display: "Michroma", "Eurostile", "Segoe UI", sans-serif;
+  --font-hud: "Saira Semi Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: #7aa3c2; color: var(--ink); font-family: var(--font-hud); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+#view { position: fixed; inset: 0; }
+#view canvas { display: block; width: 100%; height: 100%; }
+
+.hud { position: fixed; pointer-events: none; font-variant-numeric: tabular-nums; }
+.plate { background: var(--plate); border-radius: 6px; padding: 6px 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+#tl { top: calc(10px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 4px; }
+#time { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: 0.02em; }
+#best, #cpCount { font-size: 14px; color: var(--ink-dim); }
+#cpCount b { color: var(--gate); font-weight: 600; }
+#tr { top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; pointer-events: auto; }
+.btn { font: 600 13px var(--font-hud); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); background: var(--plate); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 7px 11px; cursor: pointer; }
+.btn:hover { border-color: rgba(255,255,255,0.4); }
+.btn:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.btn.on { border-color: var(--signal); color: var(--signal); }
+
+#bc { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 14px; }
+#speed { font-size: 44px; font-weight: 700; line-height: 0.9; min-width: 3ch; text-align: right; }
+#speedUnit { font-size: 12px; letter-spacing: 0.14em; color: var(--ink-dim); text-transform: uppercase; }
+.lamps { display: flex; gap: 6px; }
+.lamp { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; padding: 3px 7px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.18); color: var(--ink-dim); }
+.lamp.on.jet { background: var(--signal); border-color: var(--signal); color: #1a0d04; }
+.lamp.on.air { background: var(--gate); border-color: var(--gate); color: #04201c; }
+.lamp.on.drift { background: var(--ink); border-color: var(--ink); color: var(--plate-solid); }
+.gauges { display: flex; flex-direction: column; gap: 6px; }
+.fuel { position: relative; height: 16px; border-radius: 4px; background: var(--plate); border: 1px solid rgba(255,255,255,0.18); overflow: hidden; }
+.fuelFill { position: absolute; inset: 0; background: var(--signal); transform-origin: left center; opacity: 0.85; }
+.fuel span { position: relative; display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; line-height: 14px; padding-left: 6px; color: #1a0d04; }
+.fuel.inf .fuelFill { opacity: 0.35; }
+.fuel.inf span::after { content: " · UNLIMITED"; }
+.fuel.low .fuelFill { background: var(--bad); }
+#levels { display: flex; gap: 6px; flex-wrap: wrap; }
+.lvl.on { border-color: var(--signal); color: var(--signal); }
+body.free .race-only { display: none; }
+body:not(.free) .free-only { display: none; }
+
+#toast { top: 22%; left: 50%; transform: translateX(-50%); text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; opacity: 0; transition: opacity 0.25s; }
+#toast.show { opacity: 1; }
+#toast .d.good { color: var(--good); } #toast .d.bad { color: var(--bad); }
+
+/* start / finish card */
+#card { inset: 0; display: grid; place-items: center; pointer-events: none; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+#card .inner { pointer-events: auto; background: var(--plate); border-radius: 10px; padding: 22px 26px; max-width: 34rem; width: 100%; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
+#card h1 { font: 400 26px var(--font-display); letter-spacing: 0.12em; margin: 0; text-wrap: balance; }
+#card h1 span { color: var(--signal); }
+#card p { margin: 0; color: var(--ink-dim); font-size: 15px; line-height: 1.45; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
+.keys kbd { font: 600 12px var(--font-hud); letter-spacing: 0.06em; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.keys dt { text-align: right; } .keys dd { margin: 0; color: var(--ink-dim); }
+#card .go { font-size: 15px; color: var(--ink); }
+#card .inner { max-height: calc(100% - 24px); overflow-y: auto; }
+.only-touch { display: none; }
+body.touch .only-touch { display: block; }
+body.touch .only-keys { display: none; }
+#card .go b { color: var(--signal); }
+#result { font-size: 40px; font-weight: 700; }
+#resultSub { font-size: 16px; }
+
+/* tuning */
+#tune { top: calc(56px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: min(320px, calc(100vw - 24px)); max-height: calc(100% - 140px); overflow-y: auto; pointer-events: auto; display: flex; flex-direction: column; gap: 8px; }
+#tune h2 { font: 400 12px var(--font-display); letter-spacing: 0.14em; margin: 2px 0 4px; }
+.tuneGroup { font: 700 11px var(--font-hud); letter-spacing: 0.16em; text-transform: uppercase; color: var(--signal); margin: 12px 0 2px; }
+.tuneGroup:first-child { margin-top: 0; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
+.row label { color: var(--ink-dim); }
+.row output { font-weight: 600; }
+.row input { grid-column: 1 / -1; width: 100%; accent-color: var(--signal); }
+.tuneBtns { display: flex; gap: 6px; flex-wrap: wrap; }
+#copyBox { width: 100%; height: 90px; font: 12px ui-monospace, monospace; background: var(--plate-solid); color: var(--ink); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; }
+
+/* touch */
+#pads { inset: auto 0 0 0; padding: 0 max(14px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)); display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
+.cluster { display: grid; gap: 10px; pointer-events: auto; }
+.left { grid-template-columns: 74px 74px; grid-template-areas: "air air" "l r"; }
+.right { grid-template-columns: 74px 92px; grid-template-areas: ". jet" "brk gas"; }
+.pad { height: 74px; border-radius: 14px; background: rgba(16,24,34,0.45); border: 1px solid rgba(255,255,255,0.25); color: var(--ink); font: 700 13px var(--font-hud); letter-spacing: 0.1em; display: grid; place-items: center; touch-action: none; }
+.pad.down { background: rgba(255,255,255,0.28); }
+.pad.jet { border-color: var(--signal); color: var(--signal); }
+.pad.air { border-color: var(--gate); color: var(--gate); height: 52px; }
+#pads.tilt .l, #pads.tilt .r { visibility: hidden; }
+@media (max-width: 640px), (max-height: 480px) {
+  #time { font-size: 26px; } #speed { font-size: 32px; }
+  #bc { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+
+<div id="view"></div>
+
+<div class="hud" id="tl">
+  <div class="plate"><div id="time">0:00.00</div></div>
+  <div class="plate"><div id="cpCount">Checkpoint <b>0</b>/0</div><div id="best">Best —</div></div>
+</div>
+
+<div class="hud" id="tr">
+  <button class="btn" id="bRestart" type="button" title="Restart (R)">Restart</button>
+  <button class="btn" id="bTune" type="button" title="Tuning (T)">Tune</button>
+  <button class="btn" id="bHelp" type="button" title="Levels and controls (H)">Menu</button>
+</div>
+
+<div class="hud" id="bc">
+  <div class="plate" style="display:flex;align-items:flex-end;gap:8px">
+    <div id="speed">0</div><div id="speedUnit">km/h</div>
+  </div>
+  <div class="gauges">
+    <div class="fuel" id="fuel" title="Jet fuel"><div class="fuelFill" id="fuelFill"></div><span>JET FUEL</span></div>
+    <div class="lamps"><span class="lamp jet" id="lJet">JET</span><span class="lamp air" id="lAir">AIRBRAKE</span><span class="lamp drift" id="lDrift">DRIFT</span></div>
+  </div>
+</div>
+
+<div class="hud" id="toast"></div>
+
+<div class="hud" id="card">
+  <div class="inner" id="cardStart">
+    <h1>JET<span>LINE</span></h1>
+    <div id="levels"></div>
+    <p class="race-only">Sky Strip. Floating track, three checkpoints, one loop. Jet hard. Open the air brakes to land where you want, or with the jet on, to fly.</p>
+    <p class="only-touch">Right thumb: GAS, BRAKE and JET. Left thumb: steer and AIRBRAKE. Tap TILT to steer by turning the phone, where the browser allows it.</p>
+    <dl class="keys only-keys">
+      <dt><kbd>W</kbd> <kbd>S</kbd></dt><dd>Throttle / brake &amp; reverse. In the air with air brakes held: <span id="pitchHelp">nose down / nose up</span></dd>
+      <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Steer. In the air with air brakes held: roll</dd>
+      <dt><kbd>A</kbd>/<kbd>D</kbd> + tap <kbd>S</kbd></dt><dd>Drift. Steer to hold the slide, let go to straighten</dd>
+      <dt><kbd>Shift</kbd></dt><dd>Jet booster</dd>
+      <dt><kbd>Space</kbd></dt><dd>Air brakes + wings: grip on the road. In the air they glide and are the only way to turn the car (add jet to fly)</dd>
+      <dt><kbd>Enter</kbd></dt><dd>Back to last checkpoint</dd>
+      <dt><kbd>R</kbd></dt><dd>Restart run</dd>
+      <dt><kbd>T</kbd> <kbd>C</kbd> <kbd>G</kbd> <kbd>M</kbd></dt><dd>Tuning panel, camera, ghost, sound</dd>
+    </dl>
+    <p class="only-keys">Gamepad: triggers drive, left stick steers and pitches, A jet, B air brakes, bumpers roll.</p>
+    <p class="free-only">Skate Park: a bowl with vertical walls, a funbox, kickers, a gap jump, rollers, a loop and a step-up table. No clock. Longest air time is saved.</p>
+    <div class="go only-keys">Press <b>W</b> or <b>Shift</b> to <span class="race-only">start the clock</span><span class="free-only">ride</span>.</div>
+    <div class="go only-touch">Tap <b>GAS</b> or <b>JET</b> to start the clock.</div>
+  </div>
+  <div class="inner" id="cardEnd" hidden>
+    <h1>FINISH</h1>
+    <div id="result">0:00.00</div>
+    <div id="resultSub"></div>
+    <div class="go only-keys">Press <b>R</b> to run it again.</div>
+    <div class="tuneBtns"><button class="btn" id="bAgain" type="button">Run again</button></div>
+  </div>
+</div>
+
+<div class="hud plate" id="tune" hidden>
+  <h2>TUNING</h2>
+  <div id="tuneRows"></div>
+  <div class="tuneBtns">
+    <button class="btn" id="bCopy" type="button">Copy settings</button>
+    <button class="btn" id="bDefaults" type="button">Defaults</button>
+  </div>
+  <textarea id="copyBox" readonly hidden></textarea>
+</div>
+
+<div class="hud" id="pads" hidden>
+  <div class="cluster left">
+    <div class="pad air" style="grid-area:air" data-k="air">AIRBRAKE</div>
+    <div class="pad l" style="grid-area:l" data-k="left">◀</div>
+    <div class="pad r" style="grid-area:r" data-k="right">▶</div>
+  </div>
+  <div class="cluster right">
+    <div class="pad jet" style="grid-area:jet" data-k="jet">JET</div>
+    <div class="pad" style="grid-area:brk" data-k="brake">BRAKE</div>
+    <div class="pad" style="grid-area:gas;height:96px" data-k="gas">GAS</div>
+  </div>
+</div>
+
+<script>/*@@CORE@@*/</script>
+<script type="module">/*@@GAME@@*/</script>

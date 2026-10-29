@@ -1,0 +1,12 @@
+{
+  "name": "jetline",
+  "private": true,
+  "description": "Browser prototype of a jet-car stunt racer",
+  "scripts": {
+    "build": "node build.js",
+    "test": "sh test/all.sh | diff - test/baseline/all.txt && echo 'behavior unchanged'"
+  },
+  "devDependencies": {
+    "three": "0.160.0"
+  }
+}
