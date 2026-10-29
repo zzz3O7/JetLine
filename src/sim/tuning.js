@@ -56,8 +56,10 @@
     },
     drift: {
       driftGrip: 0.5,         // rear grip multiplier while drifting
-      driftKick: 0.35,        // rad: a brake-tap drift starts at least this sideways
-      driftSteerRate: 1.05,   // rad/s: how fast A/D change the drift angle (about 60 degrees per second)
+      driftControl: 0,        // 0 = holding A/D turns the angle, no input holds it; 1 = steering sets the angle, release straightens
+      driftKick: 0,           // rad: a brake-tap drift starts at least this sideways
+      driftSteerRate: 3,      // rad/s: how fast A/D change the drift angle (driftControl 0)
+      driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
       driftMaxAngle: 1.1,     // rad (about 63 degrees)
       driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
       driftCarve: 1.6,        // how fast the slide turns into forward motion

@@ -16,9 +16,9 @@
     // Drift state machine.
     //   start: brake while steering hard at speed (kicks the rear out to driftKick), or with autoDrift on:
     //          landing sideways after a real jump, or a slide past autoDriftAngle that lasts autoDriftHold
-    //   during: the drift angle is yours: steering into the drift widens it, steering out narrows it,
-    //          no input holds it (see groundAssists)
-    //   end:   angle brought back to (almost) straight, too slow, or airborne
+    //   during: driftControl 0: steering into the drift widens the angle, steering out narrows it, no input holds it
+    //           driftControl 1: the steering amount sets the angle (see groundAssists)
+    //   end:   angle brought back to (almost) straight / steering released, too slow, or airborne
     // car.driftAngle is the held angle in rad (positive = nose pointing into the turn).
     updateDrift(t, car, inp, grounded, vf, beta, dt) {
       const steerIn = inp.steer || 0;
@@ -47,7 +47,11 @@
         }
       } else {
         car.driftTimer += dt;
-        if (vf < 9 || car.airTime > 0.35 || car.driftAngle <= t.driftExitAngle) car.drifting = false;
+        // a short grace period after the start, so a drift starting nearly straight can be widened
+        const exit = t.driftControl >= 0.5
+          ? (Math.abs(steerIn) < 0.15 || Math.sign(steerIn) !== car.driftDir) && Math.abs(beta) < 0.16
+          : car.driftTimer > 0.25 && car.driftAngle <= t.driftExitAngle;
+        if (vf < 9 || car.airTime > 0.35 || exit) car.drifting = false;
       }
     },
 
@@ -80,9 +84,14 @@
       }
       if (grounded >= 2 && Math.abs(vf) > 8) {
         if (car.drifting) {
-          // the angle is the player's: steering into the drift widens it, steering out narrows it, no input holds it
-          const k = (inp.steer || 0) * car.driftDir;
-          car.driftAngle = Math.max(0, Math.min(t.driftMaxAngle, car.driftAngle + k * t.driftSteerRate * dt));
+          const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
+          if (t.driftControl >= 0.5) {
+            // steering sets the angle: full steering = driftTargetAngle, releasing straightens the car
+            car.driftAngle = k > 0.15 ? t.driftTargetAngle * (0.35 + 0.65 * k) : 0;
+          } else {
+            // the angle is the player's: steering into the drift widens it, steering out narrows it, no input holds it
+            car.driftAngle = Math.max(0, Math.min(t.driftMaxAngle, car.driftAngle + k * t.driftSteerRate * dt));
+          }
           const target = -car.driftDir * car.driftAngle;
           const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
           yawAssist = (target - beta) * 22 - dBeta * 8;
