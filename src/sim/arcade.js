@@ -5,38 +5,76 @@
   'use strict';
   const M = JC.M;
   const ASSIST_SLOPE = 0.07;   // ground normal y range over which assists fade out on slopes
+  const STEER_LIMIT_AFTER_DRIFT = 1.0;   // s
+  const FRONT_AXLE = JC.Vehicle.WHEELS[0].z, REAR_AXLE = JC.Vehicle.WHEELS[2].z;   // m ahead of the center of mass
 
   const Arcade = {
-    // A short window after touching down, used to catch sideways landings as drifts.
-    updateLanding(car, grounded, dt) {
-      if (grounded > 0 && car.airTime > 0.2) car.landTimer = 0.6;
+    // A short window after touching down from a real jump (not a bump), used to catch sideways landings as drifts.
+    updateLanding(t, car, grounded, dt) {
+      if (grounded > 0 && car.airTime > t.landingMinAir) car.landTimer = 0.6;
       car.landTimer = Math.max(0, (car.landTimer || 0) - dt);
     },
 
-    // Drift state machine. Starts on brake-while-steering (or by itself with autoDrift), ends when straightened.
+    // Steering limit: full steering asks for more than the front tires can give at speed, which only scrubs
+    // them (understeer) and can tip the car into a slide. This trims the steering angle to at most
+    // steerLimit x slipPeak past the direction the front axle is actually moving, so full steering is the
+    // tightest grip turn. It only ever reduces steering (never adds countersteer), and is off while
+    // drifting (the drift assists own the car then), for STEER_LIMIT_AFTER_DRIFT s after a drift so a flick
+    // into the next drift stays the player's, when slow, and in reverse.
+    limitSteer(t, car, steerAng, fwd, right, vf) {
+      if (t.steerLimit <= 0 || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
+      const vF = M.add(car.vel, M.cross(car.w, M.mul(fwd, FRONT_AXLE)));
+      const dir = Math.atan2(M.dot(vF, right), Math.max(M.dot(vF, fwd), 4)); // same low-speed floor as the tire model
+      let L = t.steerLimit * t.slipPeak;
+      if (t.steerLimitRear > 0) {
+        // rear tires past their peak in this turn (the tail stepping out): steer less, so the rear can hold
+        const vR = M.add(car.vel, M.cross(car.w, M.mul(fwd, REAR_AXLE)));
+        const rear = -Math.sign(steerAng) * Math.atan2(M.dot(vR, right), Math.max(M.dot(vR, fwd), 4)) / t.slipPeak;
+        L *= Math.max(0, 1 - t.steerLimitRear * Math.max(0, rear - 0.9));
+      }
+      return steerAng > 0 ? Math.min(steerAng, Math.max(0, dir + L)) : Math.max(steerAng, Math.min(0, dir - L));
+    },
+
+    // Drift state machine.
+    //   start: brake while steering hard at speed (kicks the rear out to driftKick), or with autoDrift on:
+    //          landing sideways after a real jump, or a slide past autoDriftAngle that lasts autoDriftHold
+    //   during: driftControl 0: steering into the drift widens the angle, steering out narrows it, no input holds it
+    //           driftControl 1: the steering amount sets the angle (see groundAssists)
+    //   end:   angle brought back to (almost) straight / steering released, too slow, or airborne
+    // car.driftAngle is the held angle in rad (positive = nose pointing into the turn).
     updateDrift(t, car, inp, grounded, vf, beta, dt) {
       const steerIn = inp.steer || 0;
+      const start = (dir, angle) => {
+        car.drifting = true; car.driftDir = dir; car.driftTimer = 0;
+        car.driftAngle = Math.min(t.driftMaxAngle, angle);
+      };
+      car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
       if (!car.drifting) {
+        // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
+        car.slideTimer = Math.abs(beta) > t.autoDriftAngle && grounded >= 2 ? (car.slideTimer || 0) + dt : 0;
         if (grounded >= 3 && vf > t.driftMinSpeed && Math.abs(steerIn) > 0.4 && inp.brake > 0.5) {
-          car.drifting = true; car.driftDir = Math.sign(steerIn); car.driftTimer = 0;
+          const dir = Math.sign(steerIn);
+          start(dir, Math.max(t.driftKick, -dir * beta));
         } else if (t.autoDrift >= 0.5 && grounded >= 2 && vf > t.driftMinSpeed * 0.7 && Math.abs(beta) > t.autoDriftAngle && Math.abs(beta) < 1.5) {
           let ny = 0, cnt = 0;
           for (const wh of car.wheels) if (wh.hit) { ny += wh.hit.n[1]; cnt++; }
           ny = cnt ? ny / cnt : 0;
           const steeringIn = Math.abs(steerIn) > 0.3 && Math.sign(steerIn) === -Math.sign(beta);
           if (car.landTimer > 0 && ny > 0.75) {
-            // just landed sideways: catch it as a drift (steering decides the direction, else the nose does)
-            car.drifting = true; car.driftTimer = 0; car.autoDrifted = true;
-            car.driftDir = Math.abs(steerIn) > 0.3 ? Math.sign(steerIn) : -Math.sign(beta);
-          } else if (steeringIn && grounded >= 3 && vf > t.driftMinSpeed && ny > 0.8) {
-            // already sliding and steering into the turn
-            car.drifting = true; car.driftDir = Math.sign(steerIn); car.driftTimer = 0; car.autoDrifted = true;
+            // landed sideways: catch it as a drift at the angle it landed with
+            start(-Math.sign(beta), Math.abs(beta));
+          } else if (steeringIn && grounded >= 3 && vf > t.driftMinSpeed && ny > 0.8 && car.slideTimer >= t.autoDriftHold) {
+            // a real slide (not a bump spike) while steering into the turn
+            start(-Math.sign(beta), Math.abs(beta));
           }
         }
       } else {
         car.driftTimer += dt;
-        const straight = Math.abs(steerIn) < 0.15 || Math.sign(steerIn) !== car.driftDir;
-        if (vf < 9 || car.airTime > 0.35 || (straight && Math.abs(beta) < 0.16) || (car.driftTimer > 0.5 && Math.abs(beta) < 0.04)) car.drifting = false;
+        // a short grace period after the start, so a drift starting nearly straight can be widened
+        const exit = t.driftControl >= 0.5
+          ? (Math.abs(steerIn) < 0.15 || Math.sign(steerIn) !== car.driftDir) && Math.abs(beta) < 0.16
+          : car.driftTimer > 0.25 && car.driftAngle <= t.driftExitAngle;
+        if (vf < 9 || car.airTime > 0.35 || exit) car.drifting = false;
       }
     },
 
@@ -69,13 +107,19 @@
       }
       if (grounded >= 2 && Math.abs(vf) > 8) {
         if (car.drifting) {
-          // hold the slide near a target angle set by the steering; straighten when steering is released
-          const steerIn = inp.steer || 0;
-          const k = steerIn * car.driftDir; // 1 = steering into the drift, <= 0 = straight or countersteer
-          const target = k > 0.15 ? -car.driftDir * t.driftAngle * (0.35 + 0.65 * k) : 0;
+          const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
+          if (t.driftControl >= 0.5) {
+            // steering sets the angle: full steering = driftTargetAngle, releasing straightens the car
+            car.driftAngle = k > 0.15 ? t.driftTargetAngle * (0.35 + 0.65 * k) : 0;
+          } else {
+            // the angle is the player's: steering into the drift widens it, steering out narrows it, no input holds it
+            car.driftAngle = Math.max(0, Math.min(t.driftMaxAngle, car.driftAngle + k * t.driftSteerRate * dt));
+          }
+          const target = -car.driftDir * car.driftAngle;
           const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
           yawAssist = (target - beta) * 22 - dBeta * 8;
           // carve: turn the velocity toward the nose, so a drift goes round the corner without losing speed
+          // (a wider angle turns tighter)
           const nv = M.rotAxis(vel, up, beta * t.driftCarve * dt);
           vel[0] = nv[0]; vel[1] = nv[1]; vel[2] = nv[2];
         } else if (t.spinAssist > 0) {

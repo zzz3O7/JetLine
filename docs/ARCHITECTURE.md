@@ -13,7 +13,7 @@ rendering, input and UI are a separate layer on top.
 | `src/track/world.js` | engine, **prototype** | raycasts and point queries against track boxes | **deleted**: `MeshCollider` + `Physics.Raycast` |
 | `src/sim/vehicle.js` | vehicle | raycast wheels, suspension, tires, engine and brakes, jet and fuel | ports: `AddForceAtPosition` in `FixedUpdate` |
 | `src/sim/aero.js` | vehicle | drag, ground effect, air brake flaps, flat-plate lift, tail fin | ports as is |
-| `src/sim/arcade.js` | gameplay | drift state machine, auto drift, roll / anti-spin / loop assists, air control | ports as is |
+| `src/sim/arcade.js` | gameplay | steering limit, drift state machine (player-controlled angle), auto drift, roll / anti-spin / loop assists, air control | ports as is |
 | `src/sim/car.js` | glue | runs the layers in a fixed order each step | `CarController.FixedUpdate` |
 | `src/sim/tuning.js` | data | every tunable number, grouped by layer | a `ScriptableObject` |
 | `src/track/geometry.js` | content | level piece list → oriented boxes, gates, centerline | mesh generator (visual + collider) |
@@ -28,6 +28,7 @@ The **engine** layer exists only because a browser has no physics engine.
 
 `Car.step()` in `src/sim/car.js`:
 
+0. **steering** – the steering angle, trimmed to what the tires can hold (`Arcade.limitSteer`; off while drifting and for 1 s after)
 1. **sense** – cast the four wheel rays (`Vehicle.senseWheels`)
 2. **arcade state** – landing window, sideways slide angle, drift state machine (`Arcade.updateLanding`, `Arcade.updateDrift`)
 3. **wheels** – suspension force, then tire force, per wheel (`Vehicle.suspensionForce`, `Vehicle.tireForce`).

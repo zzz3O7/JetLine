@@ -1,5 +1,6 @@
 // Jetline sim - the car: a rigid body stepped through the layers in a fixed order.
 //
+//   0. steering   angle trimmed to what the tires can hold (arcade.js)
 //   1. sense      raycast wheels                          (vehicle.js)
 //   2. arcade     landing window, drift state             (arcade.js)
 //   3. wheels     suspension + tire forces                (vehicle.js, drift changes tires via arcade mods)
@@ -30,6 +31,7 @@
       for (const w of this.wheels) { w.comp = w.prevComp = 0; w.contact = false; }
       this.grounded = 0; this.bodyContact = false; this.airTime = 0; this.flaps = 0; this.jetLevel = 0;
       this.fuel = 1; this.hullPrev = null; this.drifting = false; this.driftTimer = 0; this.driftDir = 0;
+      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99;
     }
 
     step(dt, inp, world) {
@@ -39,7 +41,7 @@
       const forces = new JC.Forces(pos, [0, -t.gravity * this.mass, 0]);
       const vf = M.dot(vel, fwd);
       const speed = M.len(vel);
-      const steerAng = (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff);
+      const steerAng = A.limitSteer(t, this, (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff), fwd, right, vf);
       const rayLen = t.suspTravel + t.wheelRadius;
 
       // 1. sense
@@ -47,7 +49,7 @@
       const { grounded, loopDir } = V.senseWheels(this, world, rayLen, down, up);
 
       // 2. arcade state
-      A.updateLanding(this, grounded, dt);
+      A.updateLanding(t, this, grounded, dt);
       const beta = Math.atan2(M.dot(vel, right), Math.max(1, Math.abs(vf))); // sideways slide angle
       this.prevBeta = this.slip; this.slip = beta;
       A.updateDrift(t, this, inp, grounded, vf, beta, dt);
@@ -63,7 +65,7 @@
         const tire = V.tireForce(t, this, wh, tireCtx, mods, inp, fs);
         forces.at(tire.force, wh.mount); // at mount height, which keeps the car from tipping over
         wh.spin += tire.vl * dt / t.wheelRadius;
-        wh.cp = tire.cpt; wh.n = tire.n; wh.slipV = tire.vs; wh.longV = tire.vl; wh.brakeOn = inp.brake > 0.5 && vf > 3;
+        wh.cp = tire.cpt; wh.n = tire.n; wh.slipV = tire.vs; wh.longV = tire.vl; wh.slip = tire.slip; wh.brakeOn = inp.brake > 0.5 && vf > 3;
       }
       this.grounded = grounded;
       this.inLoop = !!loopDir;

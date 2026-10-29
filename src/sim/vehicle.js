@@ -87,7 +87,7 @@
         const vd = M.mul(car.vel, 1 / speed), fa = M.dot(force, vd);
         if (fa < 0) force = M.sub(force, M.mul(vd, fa * mods.scrubKeep));
       }
-      return { force, cpt, n, vl, vs };
+      return { force, cpt, n, vl, vs, slip: alpha / t.slipPeak };
     },
 
     // Jet thrust along the nose, with optional fuel. Returns the thrust force (or null).

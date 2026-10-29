@@ -34,6 +34,8 @@
       slipPeak: 0.12,         // slip angle (rad) where a tire reaches full grip
       steerMax: 0.55,         // steering angle (rad) at standstill
       steerFalloff: 0.045,    // steering reduces with speed
+      steerLimit: 1.1,        // front wheels steer at most this many slipPeaks past where the front axle is moving (0 = off)
+      steerLimitRear: 4,      // ...and less while the rear tires are past their peak, so the tail holds (0 = off)
     },
     aero: {
       dragCoef: 1.6,          // F = k * v^2
@@ -41,7 +43,7 @@
       airbrakeDrag: 3.0,      // extra drag at the air brake flaps
       airbrakeHeight: 0,      // flap height above the center of mass (higher = air brakes pitch the nose up by themselves)
       airbrakeArm: 0.5,       // flap distance behind the center of mass (longer = air brakes resist rotation more)
-      airbrakeDownforce: 3.0, // extra ground grip while the flaps are open
+      airbrakeDownforce: 8,   // extra ground grip while the flaps are open: hold the air brakes for a tight grip turn
       bodyLift: 0.8,          // flat-plate lift of the body
       wingLift: 12,           // extra lift while the air brakes (wings) are open: glide / fly
       wingCenter: 0,          // where lift acts along the car; behind the center = self-stabilizing pitch that fights flips at speed
@@ -56,13 +58,20 @@
     },
     drift: {
       driftGrip: 0.5,         // rear grip multiplier while drifting
-      driftAngle: 0.6,        // slide angle (rad) at full steering
+      driftControl: 1,        // 0 = holding A/D turns the angle, no input holds it; 1 = steering sets the angle, release straightens
+      driftKick: 0,           // rad: a brake-tap drift starts at least this sideways
+      driftSteerRate: 3,      // rad/s: how fast A/D change the drift angle (driftControl 0)
+      driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
+      driftMaxAngle: 1.1,     // rad (about 63 degrees)
+      driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
       driftCarve: 1.6,        // how fast the slide turns into forward motion
       driftKeep: 0.75,        // share of tire scrub ignored while drifting (keeps speed)
       driftPower: 0.7,        // share of engine force that still pushes during a drift
       driftMinSpeed: 14,      // m/s needed to start a drift
-      autoDrift: 1,           // 1 = drifts also start by themselves (already sliding, or landing sideways)
-      autoDriftAngle: 0.14,   // sideways slide (rad) that starts an auto drift
+      autoDrift: 1,           // 1 = drifts also start by themselves (a lasting slide, or landing sideways)
+      autoDriftAngle: 0.12,   // rad (about 7 degrees) of slide that can start an auto drift
+      autoDriftHold: 0.12,    // s the slide must last (bumps make short spikes)
+      landingMinAir: 0.5,     // s in the air before touching down counts as a landing (not a bump)
     },
     assists: {
       stability: 1.0,         // roll assist: keeps the car flat through bank changes

@@ -312,11 +312,13 @@ const skids = (() => {
     update() {
       let loudest = 0;
       car.wheels.forEach((w, i) => {
-        const slideV = Math.abs(w.slipV || 0);
+        const slideV = Math.abs(w.slipV || 0), over = Math.abs(w.slip || 0);   // over = slip angle / grip peak
         const rear = !w.front;
         let k = 0;
         if (w.contact && w.cp) {
-          k = Math.max(k, (slideV - 2.2) / 5);                                      // sideways slide
+          // marks only past the grip limit: a grip turn runs the rear tires near 1x their peak slip angle,
+          // and full keyboard steering pushes the fronts to ~2.5x (understeer scrub), so those stay clean
+          if (slideV > 1.5) k = Math.max(k, rear ? (over - 1.3) / 2 : (over - 3) / 3);
           if (car.drifting && rear) k = Math.max(k, 0.55);                          // drifting rear tires
           if (w.brakeOn && Math.abs(w.longV) > 6) k = Math.max(k, 0.35);           // hard braking
         }
@@ -557,12 +559,14 @@ const SLIDERS = {
   slipPeak: ['Slip angle to full grip', 0.03, 0.4, 0.01],
   steerMax: ['Steering angle (rad)', 0.2, 0.9, 0.01],
   steerFalloff: ['Steering falloff with speed', 0, 0.12, 0.002],
+  steerLimit: ['Steering limit: front grip (x slip peak, 0 = off)', 0, 3, 0.05],
+  steerLimitRear: ['Steering limit: protect rear grip (0 = off)', 0, 10, 0.5],
   dragCoef: ['Air drag', 0.4, 4, 0.05],
   downforce: ['Downforce', 0, 8, 0.1],
   airbrakeDrag: ['Air brake drag', 0, 15, 0.25],
   airbrakeHeight: ['Air brake nose-up lever', -0.5, 1.5, 0.05],
   airbrakeArm: ['Air brake distance behind center', 0, 3, 0.05],
-  airbrakeDownforce: ['Air brake extra grip', 0, 8, 0.25],
+  airbrakeDownforce: ['Air brake extra grip', 0, 16, 0.25],
   wingLift: ['Wing lift (air brakes open)', 0, 40, 0.5],
   bodyLift: ['Body lift', 0, 6, 0.1],
   wingCenter: ['Lift position (− = rear, stable)', -2, 1, 0.05],
@@ -573,13 +577,20 @@ const SLIDERS = {
   airControlBase: ['Control without air brakes', 0, 1, 0.05],
   airDamping: ['Spin damping', 0, 4, 0.05],
   driftGrip: ['Rear grip', 0.15, 1, 0.01],
-  driftAngle: ['Slide angle (rad)', 0.2, 1.1, 0.01],
+  driftControl: ['Control: 0 = hold turns angle, 1 = steering sets angle', 0, 1, 1],
+  driftKick: ['Brake-tap kick angle (rad)', 0, 0.8, 0.01],
+  driftSteerRate: ['Angle change speed (rad/s), mode 0', 0.2, 6, 0.05],
+  driftTargetAngle: ['Angle at full steering (rad), mode 1', 0.2, 1.1, 0.01],
+  driftMaxAngle: ['Max angle (rad)', 0.4, 1.4, 0.01],
+  driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
   driftCarve: ['Carve into the turn', 0, 5, 0.1],
   driftKeep: ['Speed kept', 0, 1, 0.01],
   driftPower: ['Engine push in a slide', 0, 1.5, 0.05],
   driftMinSpeed: ['Min speed (m/s)', 5, 40, 1],
   autoDrift: ['Auto start (1 = on)', 0, 1, 1],
-  autoDriftAngle: ['Auto start slide angle (rad)', 0.05, 0.4, 0.01],
+  autoDriftAngle: ['Auto start slide angle (rad)', 0.05, 0.6, 0.01],
+  autoDriftHold: ['Auto start: slide must last (s)', 0, 0.5, 0.01],
+  landingMinAir: ['Landing = air time over (s)', 0.1, 1.5, 0.05],
   stability: ['Roll assist (stays flat on banks)', 0, 3, 0.05],
   spinAssist: ['Anti-spin assist (flat ground)', 0, 3, 0.05],
   loopAssist: ['Loop steering assist', 0, 1, 0.05],
