@@ -3,3 +3,4 @@ package-lock.json
 dist/
 *.png
 .DS_Store
+.env
