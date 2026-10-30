@@ -12,19 +12,26 @@ function run(opts = {}) {
   const dt = 1 / 240;
   let idx = 0, log = [], falls = 0, maxSpeed = 0, airMax = 0, lastPiece = -1;
   const line = track.line;
+  // target speed: the slowest of (corner speed from the road's curvature ahead, plus the distance left to
+  // brake for it), loops, jumps and the cruise speed
+  const latG = opts.latG || 2.0, decel = opts.decel || 7;
+  const flatH = (v) => Math.atan2(v[0], v[2]);
   function targetSpeed(i) {
-    let dist = 0, f0 = line[i].f;
-    for (let k = i; k < line.length && dist < 90; k++) {
-      const L = line[k];
-      if (L.gap) return opts.jumpSpeed || 30;
+    let dist = 0, best = opts.cruise || 45;
+    for (let k = i; k < line.length - 1 && dist < 160; k++) {
+      const L = line[k], N = line[k + 1];
+      const step = M.len(M.sub(N.p, L.p));
+      if (N.gap) { best = Math.min(best, Math.sqrt((opts.jumpSpeed || 40) ** 2 + 2 * decel * dist)); break; }
       const box = track.boxes.find(b => b.piece === L.piece);
-      if (box && box.kind === 'loop' && dist < 40) return 40;
-      // a real turn ahead (heading change, ignoring pitch): slow down for it
-      const flat = (v) => M.norm([v[0], 0, v[2]]);
-      if (dist < 85 && box && box.kind !== 'loop' && M.dot(flat(f0), flat(L.f)) < Math.cos(25 * Math.PI / 180)) return 30;
-      dist += M.len(M.sub(line[Math.min(k + 1, line.length - 1)].p, L.p));
+      if (box && box.kind === 'loop') { if (dist < 40) best = Math.min(best, 40); }
+      else if (step > 0.1) {
+        let dh = flatH(N.f) - flatH(L.f); dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+        const k1 = Math.abs(dh) / step;
+        if (k1 > 1e-4) best = Math.min(best, Math.sqrt(Math.sqrt(latG * 9.81 / k1) ** 2 + 2 * decel * dist));
+      }
+      dist += step;
     }
-    return opts.cruise || 45;
+    return best;
   }
   for (let step = 0; step < 240 * (opts.seconds || 90); step++) {
     // nearest line point near previous index
@@ -40,7 +47,7 @@ function run(opts = {}) {
     const ts = targetSpeed(idx);
     const v = car.speed;
     const L0 = line[idx], latErr = M.dot(M.sub(car.pos, L0.p), L0.r), headErr = M.dot(car.fwd, L0.r);
-    const inp = { steer: car.inLoop ? Math.max(-1, Math.min(1, -latErr * 0.25 - headErr * 3)) : Math.max(-1, Math.min(1, ang * 3)), throttle: v < ts ? 1 : 0, brake: !car.inLoop && car.grounded >= 3 && v > ts + 3 && Math.abs(ang * 3) < 0.35 ? 1 : 0, jet: v < ts - 3, airbrake: false, pitch: 0 };
+    const inp = { steer: car.inLoop ? Math.max(-1, Math.min(1, -latErr * 0.25 - headErr * 3)) : Math.max(-1, Math.min(1, ang * 3)), throttle: v < ts ? 1 : 0, brake: !car.inLoop && car.grounded >= 3 && v > ts + 3 && Math.abs(ang * 3) < 0.35 ? 1 : 0, jet: v < ts - 3, airbrake: opts.airbrake ? opts.airbrake(line[idx], v, ts) : false, pitch: 0 };
     if (car.grounded === 0 && car.airTime > 0.2 && !car.inLoop) {
       // keep the nose along the flight path
       const vd = M.norm(car.vel), rt = M.cross(car.fwd, car.up);

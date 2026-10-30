@@ -370,6 +370,7 @@ addEventListener('keydown', (e) => {
     if (e.code === 'KeyG') { ghostOn = !ghostOn; toast(ghostOn ? 'Ghost on' : 'Ghost off'); }
     if (e.code === 'KeyM') { audio.muted = !audio.muted; store.set('muted', audio.muted); toast(audio.muted ? 'Sound off' : 'Sound on'); }
     if (e.code === 'KeyH') showStartCard(true);
+    if (e.code === 'KeyX') setDriftExit(!isClassicExit());
   }
   keys.add(e.code); tapped.add(e.code);
   audio.start();
@@ -505,7 +506,24 @@ const audio = {
 const fmt = (s) => { if (s == null) return '—'; const m = Math.floor(s / 60), r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(2); };
 const fmtD = (d) => (d < 0 ? '−' : '+') + Math.abs(d).toFixed(2);
 let best = null; // {time, splits, ghost}
-const bestKey = () => 'best:' + level.name;
+// saved records belong to one layout of a level: rebuilding the track gives it a new layoutId,
+// which starts fresh times, ghosts and air records (the old ones are removed)
+const bestKey = () => 'best:' + level.name + ':' + track.layoutId;
+const airKey = () => 'air:' + level.name + ':' + track.layoutId;
+function dropStaleRecords() {
+  try {
+    const keep = new Set(['jetline:' + bestKey(), 'jetline:' + airKey()]);
+    const stale = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      for (const kind of ['best:', 'air:']) {
+        const base = 'jetline:' + kind + level.name;
+        if ((k === base || k.startsWith(base + ':')) && !keep.has(k)) stale.push(k);
+      }
+    }
+    for (const k of stale) localStorage.removeItem(k);
+  } catch (e) { /* storage unavailable */ }
+}
 let toastTimer = 0;
 function toast(html, ms = 1400) { const t = $('toast'); t.innerHTML = html; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
 let cpTotal = 0;
@@ -581,6 +599,8 @@ const SLIDERS = {
   driftKick: ['Brake-tap kick angle (rad)', 0, 0.8, 0.01],
   driftSteerRate: ['Angle change speed (rad/s), mode 0', 0.2, 6, 0.05],
   driftTargetAngle: ['Angle at full steering (rad), mode 1', 0.2, 1.1, 0.01],
+  driftRecover: ['Countersteer straightens faster (x)', 0, 4, 0.25],
+  driftCatch: ['Catch after a drift ends (s, 0 = off)', 0, 1.5, 0.05],
   driftMaxAngle: ['Max angle (rad)', 0.4, 1.4, 0.01],
   driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
   driftCarve: ['Carve into the turn', 0, 5, 0.1],
@@ -621,18 +641,42 @@ const fmtVal = (v) => +(+v).toFixed(3);
     }
   }
 }
+// drift exit styles: classic (the default) = no countersteer recovery and no catch, exits are all skill;
+// assisted = recovery and a short catch. X switches between them while driving.
+const isClassicExit = () => tuning.driftRecover === 0 && tuning.driftCatch === 0;
+const ASSISTED_EXIT = { driftRecover: 1, driftCatch: 0.4 };
+function setDriftExit(classic) {
+  tuning.driftRecover = classic ? 0 : ASSISTED_EXIT.driftRecover;
+  tuning.driftCatch = classic ? 0 : ASSISTED_EXIT.driftCatch;
+  refreshTuneInputs(); saveTuning();
+  toast(classic ? 'Drift exit: classic' : 'Drift exit: assisted');
+}
+function updateExitButtons() {
+  const c = isClassicExit();
+  $('bExitClassic').classList.toggle('on', c); $('bExitAssisted').classList.toggle('on', !c);
+}
+{
+  // buttons above the Drift sliders
+  const heads = [...document.querySelectorAll('#tuneRows .tuneGroup')];
+  const drift = heads.find((h) => h.textContent === 'Drift');
+  const box = document.createElement('div'); box.className = 'tuneBtns';
+  box.innerHTML = '<button class="btn" id="bExitClassic" type="button">Classic exit</button><button class="btn" id="bExitAssisted" type="button">Assisted exit</button>';
+  drift.after(box);
+  $('bExitClassic').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(true); });
+  $('bExitAssisted').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(false); });
+}
 function updatePitchHelp() {
   const el = $('pitchHelp');
   if (el) el.textContent = tuning.airPitchInvert >= 0.5 ? 'nose down / nose up' : 'nose up / nose down';
 }
-updatePitchHelp();
+updatePitchHelp(); updateExitButtons();
 // settings that differ from the defaults
 function changedSettings() {
   const diff = {};
   for (const k in ALL_DEFAULTS) if (tuning[k] !== ALL_DEFAULTS[k]) diff[k] = tuning[k];
   return diff;
 }
-function saveTuning() { updatePitchHelp(); store.set('tuning', changedSettings()); }
+function saveTuning() { updatePitchHelp(); updateExitButtons(); store.set('tuning', changedSettings()); }
 function refreshTuneInputs() { for (const k in SLIDERS) { $('t_' + k).value = tuning[k]; $('o_' + k).textContent = fmtVal(tuning[k]); } }
 function toggleTune() { const p = $('tune'); p.hidden = !p.hidden; $('bTune').classList.toggle('on', !p.hidden); }
 $('bTune').addEventListener('click', (e) => { e.currentTarget.blur(); toggleTune(); });
@@ -734,8 +778,9 @@ function loadLevel(i) {
   track = JC.buildTrack(level);
   race = new JC.Race(track);
   cpTotal = track.gates.filter((g) => !g.finish).length;
+  dropStaleRecords();
   best = store.get(bestKey(), null);
-  bestAir = store.get('air:' + level.name, 0);
+  bestAir = store.get(airKey(), 0);
   buildTrackMeshes();
   scene.userData.ground.position.y = track.minY - 160;
   ghostRec = []; recTick = 0;
@@ -773,7 +818,7 @@ function trackStunts(dt) {
       if (fr) parts.push((fr > 1 ? fr + '× ' : '') + 'barrel roll');
       if (fy) parts.push(fy * 180 + '° spin');
       const isBest = stunt.air > bestAir;
-      if (isBest) { bestAir = stunt.air; store.set('air:' + level.name, bestAir); }
+      if (isBest) { bestAir = stunt.air; store.set(airKey(), bestAir); }
       if (track.free || parts.length) toast(`${stunt.air.toFixed(1)} s air` + (parts.length ? ' &nbsp;·&nbsp; ' + parts.join(' + ') : '') + (isBest && track.free ? ' &nbsp;<span class="d good">longest!</span>' : ''), 1800);
     }
     stunt.pitch = stunt.roll = stunt.yaw = stunt.air = 0;

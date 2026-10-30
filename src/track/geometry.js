@@ -3,7 +3,12 @@
 //
 // Pieces (a "turtle" walks forward and lays road behind it):
 //   {s: len}                         straight
-//   {c: len, turn, pitch, bank, w}   curve: turn / pitch are deltas (deg), bank / w are targets
+//   {c: len, turn, pitch, bank, w, ease}   curve: turn / pitch are deltas (deg), bank / w are targets.
+//                                    ease (0..0.5, default level.ease or 0): share of the length at each end
+//                                    over which the curvature ramps in / out (0 = constant curvature)
+//   {corner: deg, r, bank, ease}     a turn of `deg` (right-positive) with radius `r` at its tightest; the
+//                                    bank (deg, toward the inside) follows the curvature and returns to the
+//                                    previous bank; ease defaults to 0.35. Length = |deg| * r / (1 - ease)
 //   {gap: len, dy, land}             jump gap; land = landing pitch (deg)
 //   {loop: radius, shift}            full loop, shifted sideways by `shift` so the exit passes the entry
 //   {cp: 1} / {finish: 1}            checkpoint / finish gate at the current spot
@@ -19,6 +24,23 @@
   const SLAB = 2.0;            // road slab thickness, m
   const MAX_SEG_LEN = 2.2;     // m
   const OVERLAP = 1.02;        // neighbouring slabs overlap slightly so there are no cracks
+
+  // Curvature profile of an eased piece over a in [0, 1]: ramps linearly 0 -> 1 over the first `e` of the
+  // length, holds, and ramps back to 0 over the last `e` (a clothoid-like transition).
+  const easeK = (a, e) => (e <= 0 ? 1 : Math.min(1, a / e, (1 - a) / e));
+  // Share of the piece's total turn reached at a: the normalized integral of easeK.
+  function easeP(a, e) {
+    if (e <= 0) return a;
+    const I = a < e ? a * a / (2 * e) : a > 1 - e ? (1 - e) - (1 - a) * (1 - a) / (2 * e) : e / 2 + (a - e);
+    return I / (1 - e);
+  }
+  // Rise and run of an eased pitch curve of length `len` turning by `deg` from level (deg > 0 = upward),
+  // for level helpers that need to know where a ramp ends.
+  function curveRise(len, deg, ease = 0, steps = 400) {
+    let x = 0, y = 0;
+    for (let i = 0; i < steps; i++) { const th = deg * DEG * easeP((i + 0.5) / steps, ease); x += Math.cos(th) * len / steps; y += Math.sin(th) * len / steps; }
+    return { run: x, rise: y };
+  }
 
   // Road frame from heading (right-positive), pitch (nose-up positive), bank (right side down positive)
   function frame(h, p, b) {
@@ -41,10 +63,11 @@
 
     const capLastRoad = () => { for (let i = boxes.length - 1; i >= 0; i--) if (boxes[i].kind !== 'block') { boxes[i].capF = true; break; } };
 
-    // lay `len` meters of road while interpolating heading / pitch / bank / width to the targets
-    function segs(len, h1, p1, b1, w1, shift, kind) {
-      // subdivide by length and by how much the piece bends, so curves stay smooth
-      const bend = Math.abs(h1 - heading) + Math.abs(p1 - pitch) + Math.abs(b1 - bank);
+    // lay `len` meters of road while moving heading / pitch / bank / width to the targets along the eased
+    // profile; bankPeak (corners) instead raises the bank with the curvature and brings it back
+    function segs(len, h1, p1, b1, w1, shift, kind, ease = 0, bankPeak = 0) {
+      // subdivide by length and by how much the piece bends (eased pieces bend harder in the middle)
+      const bend = (Math.abs(h1 - heading) + Math.abs(p1 - pitch) + Math.abs(b1 - bank)) / (1 - ease) + 2 * Math.abs(bankPeak);
       const n = Math.max(1, Math.ceil(len / MAX_SEG_LEN), Math.ceil(bend / maxBend)), sl = len / n;
       const h0 = heading, p0 = pitch, b0 = bank, w0 = width;
       const flatR = frame(h0, 0, 0).r;
@@ -52,8 +75,9 @@
       const sw = []; let swSum = 0;
       for (let i = 0; i < n; i++) { const v = 1 - Math.cos(2 * Math.PI * (i + 0.5) / n); sw.push(v); swSum += v; }
       for (let i = 0; i < n; i++) {
-        const a = (i + 0.5) / n;
-        const h = h0 + (h1 - h0) * a, p = p0 + (p1 - p0) * a, b = b0 + (b1 - b0) * a, wd = w0 + (w1 - w0) * a;
+        const a = easeP((i + 0.5) / n, ease);
+        const h = h0 + (h1 - h0) * a, p = p0 + (p1 - p0) * a, wd = w0 + (w1 - w0) * a;
+        const b = b0 + (b1 - b0) * a + bankPeak * easeK((i + 0.5) / n, ease);
         const fr = frame(h, p, b);
         // sideways shift (loops): skew the segment so its direction follows the shifted path
         const stepV = shift ? M.add(M.mul(fr.f, sl), M.mul(flatR, shift * sw[i] / swSum)) : M.mul(fr.f, sl);
@@ -89,7 +113,12 @@
         if (pc.s > 0.05) segs(pc.s, heading, pitch, bank, width, 0, 'road');
       } else if (pc.c !== undefined) {
         segs(pc.c, heading + (pc.turn || 0) * DEG, pitch + (pc.pitch || 0) * DEG,
-          pc.bank !== undefined ? pc.bank * DEG : bank, pc.w !== undefined ? pc.w : width, 0, 'road');
+          pc.bank !== undefined ? pc.bank * DEG : bank, pc.w !== undefined ? pc.w : width, 0, 'road',
+          pc.ease !== undefined ? pc.ease : (level.ease || 0));
+      } else if (pc.corner !== undefined) {
+        const e = pc.ease !== undefined ? pc.ease : 0.35, dh = pc.corner * DEG;
+        // bank toward the inside of the turn: right turns lower the right side (positive bank)
+        segs(Math.abs(dh) * pc.r / (1 - e), heading + dh, pitch, bank, width, 0, 'road', e, Math.sign(dh) * (pc.bank || 0) * DEG);
       } else if (pc.loop !== undefined) {
         segs(2 * Math.PI * pc.loop, heading, pitch + 2 * Math.PI, bank, width, pc.shift || width + 2, 'loop');
         pitch -= 2 * Math.PI;
@@ -107,7 +136,19 @@
     }
     capLastRoad();
     if (!start) { const fr = frame(0, 0, 0); start = { p: [0, 0, 6], f: fr.f, u: fr.u, r: fr.r, w: 12 }; }
-    return { level, boxes, gates, line, start };
+    const g = { level, boxes, gates, line, start };
+    g.layoutId = layoutId(g);
+    return g;
+  }
+
+  // Short id of a track's layout (boxes and gates). Anything that moves the road changes it, so saved
+  // best times and ghosts can be keyed by it and reset themselves when a level is rebuilt.
+  function layoutId(g) {
+    let h = 7;
+    const add = (v) => { h = (Math.imul(h, 31) + Math.round(v * 1000)) | 0; };
+    for (const b of g.boxes) for (const v of [...b.c, ...b.h, ...b.ax[0], ...b.ax[1]]) add(v);
+    for (const gt of g.gates) for (const v of [...gt.p, gt.w]) add(v);
+    return (h >>> 0).toString(36);
   }
 
   // Car pose for spawning at a gate or the start: on the road, facing along it.
@@ -117,6 +158,7 @@
   }
 
   JC.trackFrame = frame;
+  JC.curveRise = curveRise;
   JC.buildGeometry = buildGeometry;
   JC.spawnPose = spawnPose;
 })(typeof globalThis !== 'undefined' ? (globalThis.JC = globalThis.JC || {}) : (window.JC = window.JC || {}));

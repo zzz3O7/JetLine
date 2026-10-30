@@ -6,6 +6,7 @@
   const M = JC.M;
   const ASSIST_SLOPE = 0.07;   // ground normal y range over which assists fade out on slopes
   const STEER_LIMIT_AFTER_DRIFT = 1.0;   // s
+  const SWITCH_BUFFER = 0.2;             // s a brake tap during a drift waits for the steering to cross over
   const FRONT_AXLE = JC.Vehicle.WHEELS[0].z, REAR_AXLE = JC.Vehicle.WHEELS[2].z;   // m ahead of the center of mass
 
   const Arcade = {
@@ -40,6 +41,7 @@
     //          landing sideways after a real jump, or a slide past autoDriftAngle that lasts autoDriftHold
     //   during: driftControl 0: steering into the drift widens the angle, steering out narrows it, no input holds it
     //           driftControl 1: the steering amount sets the angle (see groundAssists)
+    //   switch: brake tap while steering the other way starts a drift that way (the assists swing the car over)
     //   end:   angle brought back to (almost) straight / steering released, too slow, or airborne
     // car.driftAngle is the held angle in rad (positive = nose pointing into the turn).
     updateDrift(t, car, inp, grounded, vf, beta, dt) {
@@ -49,6 +51,7 @@
         car.driftAngle = Math.min(t.driftMaxAngle, angle);
       };
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
+      car.brakeBuf = car.drifting && inp.brake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
         car.slideTimer = Math.abs(beta) > t.autoDriftAngle && grounded >= 2 ? (car.slideTimer || 0) + dt : 0;
@@ -68,6 +71,11 @@
             start(-Math.sign(beta), Math.abs(beta));
           }
         }
+      } else if (grounded >= 3 && vf > t.driftMinSpeed && car.brakeBuf > 0 && steerIn * car.driftDir < -0.3) {
+        // switch: brake tap while steering the other way swings the car straight into a drift that way
+        // (the tap is remembered for SWITCH_BUFFER s, so pressing both keys together works on a keyboard)
+        car.brakeBuf = 0;
+        start(-car.driftDir, 0);
       } else {
         car.driftTimer += dt;
         // a short grace period after the start, so a drift starting nearly straight can be widened
@@ -105,6 +113,7 @@
         const err = M.dot(M.cross(up, nA), fwd);
         rollAssist = (err * 70 - M.dot(w, fwd) * 9) * t.stability;
       }
+      const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
       if (grounded >= 2 && Math.abs(vf) > 8) {
         if (car.drifting) {
           const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
@@ -116,16 +125,25 @@
             car.driftAngle = Math.max(0, Math.min(t.driftMaxAngle, car.driftAngle + k * t.driftSteerRate * dt));
           }
           const target = -car.driftDir * car.driftAngle;
-          const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
-          yawAssist = (target - beta) * 22 - dBeta * 8;
+          // countersteering straightens the car faster than just letting go (stiffer, equally damped hold)
+          const g = 1 + t.driftRecover * Math.max(0, -k);
+          yawAssist = (target - beta) * 22 * g - dBeta * 8 * Math.sqrt(g);
           // carve: turn the velocity toward the nose, so a drift goes round the corner without losing speed
           // (a wider angle turns tighter)
           const nv = M.rotAxis(vel, up, beta * t.driftCarve * dt);
           vel[0] = nv[0]; vel[1] = nv[1]; vel[2] = nv[2];
-        } else if (t.spinAssist > 0) {
-          // anti-spin: past ~8 degrees of slide, nudge the nose toward the direction of travel (flat ground only)
-          const ex = Math.sign(beta) * Math.max(0, Math.abs(beta) - 0.14);
-          yawAssist = -ex * 14 * t.spinAssist * flatness;
+        } else {
+          if (t.spinAssist > 0) {
+            // anti-spin: past ~8 degrees of slide, nudge the nose toward the direction of travel (flat ground only)
+            const ex = Math.sign(beta) * Math.max(0, Math.abs(beta) - 0.14);
+            yawAssist = -ex * 14 * t.spinAssist * flatness;
+          }
+          if (t.driftCatch > 0 && car.sinceDrift < t.driftCatch) {
+            // catch after a drift: the car comes out of a drift rotating; damp that swing for a moment (fading
+            // out), so a countersteered exit settles straight instead of throwing the car into the opposite slide
+            const f = (1 - car.sinceDrift / t.driftCatch) * flatness;
+            yawAssist += (-beta * 12 - dBeta * 8) * f;
+          }
         }
       }
       return { rollAssist, yawAssist };
