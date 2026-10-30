@@ -120,6 +120,7 @@ fuzz 7199 -56.8553942106514 0.644349627075800 48.1239024452805 -0.00204988763987
 fuzz 9599 -56.7900771638950 0.670398365598606 48.1535663451880 0.00366090365030773 -0.999605064966385 0.0252591971647554 -0.0117594573260500 0.0332151524425041 0.101734004851454 -0.00637320124948211 -0.0388370103493804 0.0113552733513488 0.0290236642453230 g4 d0 f0.062500000000 fl0.077368334686
 geom Sky Strip boxes=1732 gates=4 line=1735 hash=296229390 killY=-81.99773027619129
 geom Skate Park boxes=1663 gates=0 line=1653 hash=-523065305 killY=-42.00000127737025
+geom Hairpin boxes=471 gates=1 line=471 hash=-903580805 killY=-43.445625016193326
 ##### spin
 full throttle + steer 30 m/s         max slip    4.9 deg  v 34.0
 jet + steer 45 m/s                   max slip    6.0 deg  v 62.7
@@ -266,6 +267,7 @@ segDeg 0.5   boxes  304 suspension HF noise 1.186
 {"spinAssist":1,"loopAssist":0} OK 47.97 falls 0 
 {"spinAssist":0,"loopAssist":1} OK 48.13 falls 0 
 {"spinAssist":0,"loopAssist":0} OK 47.97 falls 0 
+Hairpin level OK 13.02 falls 0
 ##### gripturn
 90 km/h           R 58.2 m  2.19 g  8.0 km/h/s  grip
 90 km/h air brakes R 28.4 m  3.34 g  -0.8 km/h/s  grip

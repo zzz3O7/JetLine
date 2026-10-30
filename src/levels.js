@@ -122,5 +122,21 @@
       ],
     },
     { name: 'Skate Park', mode: 'free', pieces: skatePark() },
+    {
+      // Practice: the Sky Strip hairpin on its own. A run-up, the hairpin, then a long narrow exit straight:
+      // a drift that isn't cleanly finished (or flicks into a new one) slides off the edge.
+      name: 'Hairpin',
+      width: 13,
+      ease: 0.35,
+      pieces: [
+        { s: 150 },
+        { c: 20, w: 17 },
+        { corner: 165, r: 24, bank: 10 },
+        { c: 16, w: 9 },
+        { s: 180 },
+        { finish: 1 },
+        { s: 60 },
+      ],
+    },
   ];
 })(typeof globalThis !== 'undefined' ? (globalThis.JC = globalThis.JC || {}) : (window.JC = window.JC || {}));
