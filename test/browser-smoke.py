@@ -20,8 +20,8 @@ with sync_playwright() as p:
         # start the run, then jump to the last gate area and drive to the finish
         pg.keyboard.down('KeyW'); pg.wait_for_timeout(300)
         pg.evaluate('''() => { const J = window.JC, t = __jetline.track, r = __jetline.race; r.next = t.gates.length - 1;
-          const bx = t.boxes.filter(x => x.piece === 24)[0];
-          const g = { p: J.M.add(bx.c, J.M.mul(bx.ax[1], 1)), f: bx.ax[2], u: bx.ax[1], r: bx.ax[0] };
+          const L = t.line[Math.max(0, t.gates[t.gates.length - 1].line - 20)];
+          const g = { p: L.p, f: L.f, u: L.u, r: L.r };
           const s = t.spawnFor(g); __jetline.car.reset(s.pos, s.q, 30); }''')
         for _ in range(30):
             pg.wait_for_timeout(300)
