@@ -505,7 +505,24 @@ const audio = {
 const fmt = (s) => { if (s == null) return '—'; const m = Math.floor(s / 60), r = s - m * 60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(2); };
 const fmtD = (d) => (d < 0 ? '−' : '+') + Math.abs(d).toFixed(2);
 let best = null; // {time, splits, ghost}
-const bestKey = () => 'best:' + level.name;
+// saved records belong to one layout of a level: rebuilding the track gives it a new layoutId,
+// which starts fresh times, ghosts and air records (the old ones are removed)
+const bestKey = () => 'best:' + level.name + ':' + track.layoutId;
+const airKey = () => 'air:' + level.name + ':' + track.layoutId;
+function dropStaleRecords() {
+  try {
+    const keep = new Set(['jetline:' + bestKey(), 'jetline:' + airKey()]);
+    const stale = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      for (const kind of ['best:', 'air:']) {
+        const base = 'jetline:' + kind + level.name;
+        if ((k === base || k.startsWith(base + ':')) && !keep.has(k)) stale.push(k);
+      }
+    }
+    for (const k of stale) localStorage.removeItem(k);
+  } catch (e) { /* storage unavailable */ }
+}
 let toastTimer = 0;
 function toast(html, ms = 1400) { const t = $('toast'); t.innerHTML = html; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
 let cpTotal = 0;
@@ -734,8 +751,9 @@ function loadLevel(i) {
   track = JC.buildTrack(level);
   race = new JC.Race(track);
   cpTotal = track.gates.filter((g) => !g.finish).length;
+  dropStaleRecords();
   best = store.get(bestKey(), null);
-  bestAir = store.get('air:' + level.name, 0);
+  bestAir = store.get(airKey(), 0);
   buildTrackMeshes();
   scene.userData.ground.position.y = track.minY - 160;
   ghostRec = []; recTick = 0;
@@ -773,7 +791,7 @@ function trackStunts(dt) {
       if (fr) parts.push((fr > 1 ? fr + '× ' : '') + 'barrel roll');
       if (fy) parts.push(fy * 180 + '° spin');
       const isBest = stunt.air > bestAir;
-      if (isBest) { bestAir = stunt.air; store.set('air:' + level.name, bestAir); }
+      if (isBest) { bestAir = stunt.air; store.set(airKey(), bestAir); }
       if (track.free || parts.length) toast(`${stunt.air.toFixed(1)} s air` + (parts.length ? ' &nbsp;·&nbsp; ' + parts.join(' + ') : '') + (isBest && track.free ? ' &nbsp;<span class="d good">longest!</span>' : ''), 1800);
     }
     stunt.pitch = stunt.roll = stunt.yaw = stunt.air = 0;

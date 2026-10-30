@@ -136,7 +136,19 @@
     }
     capLastRoad();
     if (!start) { const fr = frame(0, 0, 0); start = { p: [0, 0, 6], f: fr.f, u: fr.u, r: fr.r, w: 12 }; }
-    return { level, boxes, gates, line, start };
+    const g = { level, boxes, gates, line, start };
+    g.layoutId = layoutId(g);
+    return g;
+  }
+
+  // Short id of a track's layout (boxes and gates). Anything that moves the road changes it, so saved
+  // best times and ghosts can be keyed by it and reset themselves when a level is rebuilt.
+  function layoutId(g) {
+    let h = 7;
+    const add = (v) => { h = (Math.imul(h, 31) + Math.round(v * 1000)) | 0; };
+    for (const b of g.boxes) for (const v of [...b.c, ...b.h, ...b.ax[0], ...b.ax[1]]) add(v);
+    for (const gt of g.gates) for (const v of [...gt.p, gt.w]) add(v);
+    return (h >>> 0).toString(36);
   }
 
   // Car pose for spawning at a gate or the start: on the road, facing along it.

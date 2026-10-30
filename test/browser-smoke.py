@@ -13,6 +13,8 @@ with sync_playwright() as p:
         pg.route('https://cdn.jsdelivr.net/**', lambda r: r.fulfill(status=200, content_type='application/javascript', body=three))
         pg.route('https://fonts.googleapis.com/**', lambda r: r.fulfill(status=200, content_type='text/css', body=''))
         pg.route('http://local/', lambda r: r.fulfill(status=200, content_type='text/html', body=page_html))
+        # a record from an older layout of the level: loading the level should remove it
+        pg.add_init_script('try { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("jetline:best:Sky Strip", JSON.stringify({ time: 1 })); localStorage.setItem("jetline:best:Sky Strip:old", "{}"); sessionStorage.setItem("seeded", "1"); } } catch (e) {}')
         pg.goto('http://local/')
         pg.wait_for_timeout(1500)
         if name == 'phone':
@@ -29,7 +31,8 @@ with sync_playwright() as p:
         pg.keyboard.up('KeyW')
         pg.wait_for_timeout(500)
         pg.screenshot(path=f'dist/smoke-{name}.png')
-        print(name, pg.evaluate('({fin: __jetline.race.finished, t: __jetline.race.time, best: localStorage.getItem("jetline:best:Sky Strip") ? "saved" : "none"})'))
+        print(name, pg.evaluate('''({fin: __jetline.race.finished, t: __jetline.race.time, best: localStorage.getItem("jetline:best:Sky Strip:" + __jetline.track.layoutId) ? "saved" : "none",
+          stale: Object.keys(localStorage).filter(k => k.startsWith("jetline:best:") && k !== "jetline:best:Sky Strip:" + __jetline.track.layoutId)})'''))
         print('\n'.join(logs[:10]))
         ctx.close()
     b.close()
