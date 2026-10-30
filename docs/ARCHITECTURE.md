@@ -83,7 +83,7 @@ as a diff, and the baseline is then re-recorded on purpose:
 Other tests measure specific behavior: `spin.js` (slides and spin-outs), `drift.js` and `autodrift.js`,
 `landing*.js` (bounce and drift on landings), `edges.js` (ramp edge hits), `flip3.js` (air rotation vs speed),
 `fly.js` (gliding and flight), `park.js` (skate park features), `loopnoassist.js`, `simvar.js` (an autopilot
-finishes Sky Strip), `gripturn.js` (grip turns with and without air brakes), `flick.js` (drift direction
+finishes Sky Strip), `gripturn.js` (grip turns with and without air brakes), `flick.js` (drift exits and
 switches), `jumps.js` (the speed window in which each Sky Strip jump lands), `fuzz.js` (random input: no NaNs,
 no tunneling).
 

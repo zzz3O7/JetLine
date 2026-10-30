@@ -64,6 +64,8 @@
       driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
       driftMaxAngle: 1.1,     // rad (about 63 degrees)
       driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
+      driftRecover: 1,        // countersteering straightens a drift this much faster (x stiffness at full countersteer)
+      driftCatch: 0.4,        // s after a drift during which the leftover swing is damped (0 = off)
       driftCarve: 1.6,        // how fast the slide turns into forward motion
       driftKeep: 0.75,        // share of tire scrub ignored while drifting (keeps speed)
       driftPower: 0.7,        // share of engine force that still pushes during a drift
