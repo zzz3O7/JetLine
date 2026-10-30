@@ -641,12 +641,13 @@ const fmtVal = (v) => +(+v).toFixed(3);
     }
   }
 }
-// drift exit styles: classic = no countersteer recovery and no catch (exits are all skill),
-// assisted = the defaults. X switches between them while driving.
+// drift exit styles: classic (the default) = no countersteer recovery and no catch, exits are all skill;
+// assisted = recovery and a short catch. X switches between them while driving.
 const isClassicExit = () => tuning.driftRecover === 0 && tuning.driftCatch === 0;
+const ASSISTED_EXIT = { driftRecover: 1, driftCatch: 0.4 };
 function setDriftExit(classic) {
-  tuning.driftRecover = classic ? 0 : JC.defaultTuning.driftRecover;
-  tuning.driftCatch = classic ? 0 : JC.defaultTuning.driftCatch;
+  tuning.driftRecover = classic ? 0 : ASSISTED_EXIT.driftRecover;
+  tuning.driftCatch = classic ? 0 : ASSISTED_EXIT.driftCatch;
   refreshTuneInputs(); saveTuning();
   toast(classic ? 'Drift exit: classic' : 'Drift exit: assisted');
 }

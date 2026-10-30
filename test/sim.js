@@ -47,7 +47,7 @@ function run(opts = {}) {
     const ts = targetSpeed(idx);
     const v = car.speed;
     const L0 = line[idx], latErr = M.dot(M.sub(car.pos, L0.p), L0.r), headErr = M.dot(car.fwd, L0.r);
-    const inp = { steer: car.inLoop ? Math.max(-1, Math.min(1, -latErr * 0.25 - headErr * 3)) : Math.max(-1, Math.min(1, ang * 3)), throttle: v < ts ? 1 : 0, brake: !car.inLoop && car.grounded >= 3 && v > ts + 3 && Math.abs(ang * 3) < 0.35 ? 1 : 0, jet: v < ts - 3, airbrake: false, pitch: 0 };
+    const inp = { steer: car.inLoop ? Math.max(-1, Math.min(1, -latErr * 0.25 - headErr * 3)) : Math.max(-1, Math.min(1, ang * 3)), throttle: v < ts ? 1 : 0, brake: !car.inLoop && car.grounded >= 3 && v > ts + 3 && Math.abs(ang * 3) < 0.35 ? 1 : 0, jet: v < ts - 3, airbrake: opts.airbrake ? opts.airbrake(line[idx], v, ts) : false, pitch: 0 };
     if (car.grounded === 0 && car.airTime > 0.2 && !car.inLoop) {
       // keep the nose along the flight path
       const vd = M.norm(car.vel), rt = M.cross(car.fwd, car.up);
