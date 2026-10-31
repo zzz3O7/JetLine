@@ -69,6 +69,7 @@
       driftRecover: 0,        // countersteering straightens a drift this much faster (x stiffness at full countersteer)
       driftCatch: 0,          // s after a drift during which the leftover swing is damped (0 = off)
       driftExitBlend: 0.45,   // rad: while straightening out, drift tires fade back to normal below this angle (0 = switch at the end)
+      driftExitGain: 3,       // how much firmer the straightening is when leaving a drift (steering released or countersteered)
       driftCarveExit: 0,      // share of the carve kept while straightening out (steering released or countersteered)
       driftCarve: 2.0,        // how fast the slide turns into forward motion
       driftKeep: 0.95,        // share of tire scrub ignored while drifting (keeps speed)

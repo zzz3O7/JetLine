@@ -140,7 +140,8 @@
           }
           const target = -car.driftDir * car.driftAngle;
           // countersteering straightens the car faster than just letting go (stiffer, equally damped hold)
-          const g = 1 + t.driftRecover * Math.max(0, -k);
+          // straightening out (target angle zero) is firmer than holding an angle: no pause before the nose comes back
+          const g = (1 + t.driftRecover * Math.max(0, -k)) * (car.driftAngle > 0 ? 1 : t.driftExitGain);
           yawAssist = (target - beta) * 22 * g - dBeta * 8 * Math.sqrt(g);
           // carve: turn the velocity toward the nose, so a drift goes round the corner without losing speed
           // (a wider angle turns tighter)
