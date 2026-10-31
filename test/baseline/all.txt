@@ -310,6 +310,23 @@ air control, jet, empty tank:        pitch rate 0.01 rad/s
 air control, jet, jetAirControl 0:   pitch rate 0.01 rad/s
 full steering at 144 km/h, steerAssist true: grip slip 4°
 full steering at 144 km/h, steerAssist false: drift slip 32°
+##### continuous
+grip turn, full A/D, 90 km/h                 max slide   6°  last second   4°  rotated   88°  end 130 km/h
+grip turn, full A/D, 126 km/h                max slide   6°  last second   4°  rotated   84°  end 143 km/h
+grip turn, full A/D, 162 km/h                max slide   7°  last second   5°  rotated   81°  end 155 km/h
+handbrake tap while steering, 108 km/h       max slide  98°  last second  55°  rotated  245°  end 132 km/h
+after the tap, A/D held 25% of the time      max slide  22°  last second   1°  rotated  159°  end 156 km/h
+after the tap, A/D held 55.00000000000001% of the time max slide  30°  last second  22°  rotated  329°  end 159 km/h
+after the tap, A/D held 100% of the time     max slide 180°  last second  21°  rotated  556°  end 117 km/h
+countersteer after 1.5 s, let go when straight max slide  56°  last second   2°  rotated  118°  end 154 km/h
+analog full lock, 64.8 km/h                  max slide 180°  last second  93°  rotated  337°  end 94 km/h
+analog full lock, 90 km/h                    max slide   6°  last second   3°  rotated   83°  end 124 km/h
+analog 45%, 90 km/h                          max slide   6°  last second   4°  rotated   89°  end 129 km/h
+handbrake held 1 s + A/D, no gas, 108 km/h   max slide 152°  last second 151°  rotated  180°  end 22 km/h
+handbrake held 1 s + A/D, W held, 108 km/h   max slide 180°  last second  21°  rotated  570°  end 94 km/h
+Sky Strip bot (grip driving) OK 47.97 falls 0
+Hairpin bot (grip driving) OK 12.97 falls 0
+random input 120 s, NaNs: 0
 ##### fuzz0
 { steps: 144000, nan: 0, deepCenterPenetrations: 0, falls: 88 }
 ##### fuzz1

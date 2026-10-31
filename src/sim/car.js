@@ -31,7 +31,7 @@
       for (const w of this.wheels) { w.comp = w.prevComp = 0; w.contact = false; }
       this.grounded = 0; this.bodyContact = false; this.airTime = 0; this.flaps = 0; this.jetLevel = 0;
       this.fuel = 1; this.hullPrev = null; this.drifting = false; this.driftTimer = 0; this.driftDir = 0;
-      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99; this.brakeBuf = 0;
+      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99; this.brakeBuf = 0; this.slide = 0; this.sideways = 0;
     }
 
     step(dt, inp, world) {
@@ -41,7 +41,8 @@
       const forces = new JC.Forces(pos, [0, -t.gravity * this.mass, 0]);
       const vf = M.dot(vel, fwd);
       const speed = M.len(vel);
-      const steerAng = A.limitSteer(t, this, inp, (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff), fwd, right, vf);
+      let steerAng = A.limitSteer(t, this, inp, (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff), fwd, right, vf);
+      if (t.driftModel >= 0.5) steerAng = A.steerContinuous(t, this, steerAng, inp, fwd, right);
       const rayLen = t.suspTravel + t.wheelRadius;
 
       // 1. sense
@@ -52,8 +53,9 @@
       A.updateLanding(t, this, grounded, dt);
       const beta = Math.atan2(M.dot(vel, right), Math.max(1, Math.abs(vf))); // sideways slide angle
       this.prevBeta = this.slip; this.slip = beta;
-      A.updateDrift(t, this, inp, grounded, vf, beta, dt);
-      const mods = A.tireMods(t, this.drifting);
+      if (t.driftModel >= 0.5) A.updateSlide(t, this, grounded, vf, dt);
+      else A.updateDrift(t, this, inp, grounded, vf, beta, dt);
+      const mods = A.tireMods(t, this.drifting, this);
 
       // 3. wheel forces
       const tireCtx = { fwd, right, down, steerAng, vf, speed };

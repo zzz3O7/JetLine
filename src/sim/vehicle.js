@@ -56,7 +56,11 @@
 
     // Tire force for one wheel. `mods` comes from the arcade layer (drift); identity values = plain physics:
     //   rearGripMul (1), brakeMul (1), drivePastGrip (null = drive obeys grip), scrubKeep (0).
+    //   Continuous drift (mods.continuous): grip falls past the peak slip angle, and drive, brakes and the
+    //   handbrake take their share of grip first (cornering gets what is left); mods.slide (0..1) blends the
+    //   drift effects in, see tireForceContinuous.
     tireForce(t, car, wh, ctx, mods, inp, load) {
+      if (mods.continuous) return Vehicle.tireForceContinuous(t, car, wh, ctx, mods, inp, load);
       const { fwd, right, down, steerAng, vf, speed } = ctx;
       const n = wh.hit.n;
       let wf = wh.front ? M.add(M.mul(fwd, Math.cos(steerAng)), M.mul(right, Math.sin(steerAng))) : fwd;
@@ -90,6 +94,52 @@
       if (inp.handbrake > 0 && !wh.front) {
         // handbrake: rear wheels only, never reverses, and not softened by drifting (holding it slows a drift)
         force = M.add(force, M.mul(wf, -inp.handbrake * t.handbrakeForce * 0.5 * Math.tanh(vl / 0.5)));
+      }
+      return { force, cpt, n, vl, vs, slip: alpha / t.slipPeak };
+    },
+
+    // Continuous-drift tire: one model for gripping and sliding.
+    tireForceContinuous(t, car, wh, ctx, mods, inp, load) {
+      const { fwd, right, down, steerAng, vf, speed } = ctx;
+      const n = wh.hit.n, s = mods.slide;
+      let wf = wh.front ? M.add(M.mul(fwd, Math.cos(steerAng)), M.mul(right, Math.sin(steerAng))) : fwd;
+      wf = M.norm(M.sub(wf, M.mul(n, M.dot(wf, n))));
+      const side = M.cross(wf, n);
+      const cpt = M.add(wh.mount, M.mul(down, wh.hit.t));
+      const vp = M.add(car.vel, M.cross(car.w, M.sub(cpt, car.pos)));
+      const vl = M.dot(vp, wf), vs = M.dot(vp, side);
+      const gripLoad = Math.min(load, car.mass * t.gravity * GRIP_LOAD_CAP);
+      const fmax = t.grip * gripLoad * (wh.front ? 1 : t.rearGrip * mods.rearGripMul);
+      const alpha = Math.atan2(vs, Math.max(Math.abs(vl), 4));
+      // lateral curve: linear up to the peak, then grip falls toward tireSlideGrip as the tire slides further
+      const r = Math.abs(alpha) / t.slipPeak;
+      const shape = r <= 1 ? r : Math.max(t.tireSlideGrip, 1 - (1 - t.tireSlideGrip) * (r - 1) / t.tireSlideRange);
+      // longitudinal demand first: rolling resistance, the grip-bound part of the drive, brakes, handbrake
+      const drive = !wh.front && inp.throttle > 0 ? inp.throttle * t.engineForce * 0.5 * Math.max(0, 1 - vl / t.engineTopSpeed) : 0;
+      // the engine always uses rear grip (power oversteer); while sliding it pushes harder (drift power)
+      let fLong = -vl * t.rollRes + drive * (1 + (t.slidePower - 1) * s);
+      if (inp.brake > 0) {
+        if (vf > 1.0) fLong -= inp.brake * t.brakeForce * (wh.front ? 0.3 : 0.2) * Math.tanh(vl / 0.5);
+        else if (!wh.front) fLong -= inp.brake * t.reverseForce * 0.5 * Math.max(0, 1 + vl / 12);
+      }
+      if (inp.handbrake > 0 && !wh.front) {
+        const hb = inp.handbrake * t.handbrakeForce * 0.5;
+        if (hb >= fmax * t.tireSlideGrip && Math.hypot(vl, vs) > 1) {
+          // locked wheel: it slides, and its friction opposes the sliding direction (almost no cornering grip)
+          const vsl = Math.hypot(vl, vs), f = fmax * t.tireSlideGrip;
+          return { force: M.add(M.mul(wf, -f * vl / vsl), M.mul(side, -f * vs / vsl)), cpt, n, vl, vs, slip: alpha / t.slipPeak };
+        }
+        fLong -= hb * Math.tanh(vl / 0.5);
+      }
+      fLong = Math.max(-fmax, Math.min(fmax, fLong));
+      // cornering gets the grip that is left (friction circle)
+      const latMax = Math.sqrt(Math.max(0, fmax * fmax - fLong * fLong));
+      const fLat = -Math.sign(alpha) * Math.min(latMax, fmax * shape);
+      let force = M.add(M.mul(side, fLat), M.mul(wf, fLong));
+      if (s > 0 && speed > 1) {
+        // while sliding, most of the scrub that would slow the car is dropped (drifts keep their speed)
+        const vd = M.mul(car.vel, 1 / speed), fa = M.dot(force, vd);
+        if (fa < 0) force = M.sub(force, M.mul(vd, fa * t.driftKeep * s));
       }
       return { force, cpt, n, vl, vs, slip: alpha / t.slipPeak };
     },

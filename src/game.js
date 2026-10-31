@@ -374,6 +374,7 @@ addEventListener('keydown', (e) => {
     if (e.code === 'KeyM') { audio.muted = !audio.muted; store.set('muted', audio.muted); toast(audio.muted ? 'Sound off' : 'Sound on'); }
     if (e.code === 'KeyH') showStartCard(true);
     if (e.code === 'KeyX') setDriftExit(!isClassicExit());
+    if (e.code === 'KeyV') setDriftModel(tuning.driftModel < 0.5);
   }
   keys.add(e.code); tapped.add(e.code);
   audio.start();
@@ -419,6 +420,11 @@ function updateInput(dt) {
   // in the air: W / gas / stick up = nose up (arcade style); "Flight-sim pitch" flips it
   const pitchSign = tuning.airPitchInvert >= 0.5 ? -1 : 1;
   input.pitch = Math.max(-1, Math.min(1, pitchSign * (input.throttle - input.brake - (gp ? gp.pitch : 0))));
+  // continuous drift on a keyboard: S while steering hard at speed on the ground works as the handbrake
+  // (Alt, the real handbrake key, is grabbed by some browsers)
+  if (tuning.driftModel >= 0.5 && kBrk && Math.abs(steerKb) > 0.5 && car.grounded >= 2 && M.dot(car.vel, car.fwd) > 14) {
+    input.handbrake = 1; input.brake = Math.max(touch.brake, gp ? gp.brake : 0);
+  }
   input.roll = (kd('KeyE') ? 1 : 0) - (kd('KeyQ') ? 1 : 0) + (gp ? gp.roll : 0);
   if (!race.started && !race.finished && (input.throttle > 0.1 || input.jet || input.brake > 0.1)) startRun();
   tapped.clear();
@@ -605,6 +611,16 @@ const SLIDERS = {
   driftGrip: ['Rear grip', 0.15, 1, 0.01],
   driftControl: ['Control: 0 = hold turns angle, 1 = steering sets angle', 0, 1, 1],
   driftKick: ['Brake-tap kick angle (rad)', 0, 0.8, 0.01],
+  slideStart: ['Continuous: slide effects start at (rad)', 0, 0.4, 0.01],
+  slideFull: ['Continuous: ... fully on at (rad)', 0.1, 0.8, 0.01],
+  slideSpin: ['Continuous: fade out past (rad, spin point)', 0.3, 1.5, 0.01],
+  tireSlideGrip: ['Continuous: grip of a sliding tire', 0.3, 1, 0.01],
+  tireSlideRange: ['Continuous: how fast grip falls past the peak', 0.5, 5, 0.1],
+  driftCaster: ['Continuous: front wheels self-align (caster)', 0, 1.5, 0.05],
+  driftSteerRange: ['Continuous: extra steering in a slide (rad)', 0, 1.2, 0.05],
+  slideRearGrip: ['Continuous: rear grip in a slide', 0.3, 1.2, 0.01],
+  slideCarve: ['Continuous: carve into the turn', 0, 5, 0.1],
+  slidePower: ['Continuous: engine push in a slide', 0.5, 2.5, 0.05],
   driftSteerRate: ['Angle change speed (rad/s), mode 0', 0.2, 6, 0.05],
   driftTargetAngle: ['Angle at full steering (rad), mode 1', 0.2, 1.1, 0.01],
   driftRecover: ['Countersteer straightens faster (x)', 0, 4, 0.25],
@@ -659,17 +675,28 @@ function setDriftExit(classic) {
   refreshTuneInputs(); saveTuning();
   toast(classic ? 'Drift exit: classic' : 'Drift exit: assisted');
 }
+function setDriftModel(continuous) {
+  tuning.driftModel = continuous ? 1 : 0;
+  refreshTuneInputs(); saveTuning();
+  toast(continuous ? 'Drift: continuous (tap to steer the slide)' : 'Drift: classic');
+}
 function updateExitButtons() {
-  const c = isClassicExit();
+  const c = isClassicExit(), cont = tuning.driftModel >= 0.5;
   $('bExitClassic').classList.toggle('on', c); $('bExitAssisted').classList.toggle('on', !c);
+  $('bModelClassic').classList.toggle('on', !cont); $('bModelCont').classList.toggle('on', cont);
+  // exit styles only apply to the classic model
+  $('bExitClassic').hidden = $('bExitAssisted').hidden = cont;
 }
 {
   // buttons above the Drift sliders
   const heads = [...document.querySelectorAll('#tuneRows .tuneGroup')];
   const drift = heads.find((h) => h.textContent === 'Drift');
   const box = document.createElement('div'); box.className = 'tuneBtns';
-  box.innerHTML = '<button class="btn" id="bExitClassic" type="button">Classic exit</button><button class="btn" id="bExitAssisted" type="button">Assisted exit</button>';
+  box.innerHTML = '<button class="btn" id="bModelClassic" type="button">Classic drift</button><button class="btn" id="bModelCont" type="button">Continuous drift</button>'
+    + '<button class="btn" id="bExitClassic" type="button">Classic exit</button><button class="btn" id="bExitAssisted" type="button">Assisted exit</button>';
   drift.after(box);
+  $('bModelClassic').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftModel(false); });
+  $('bModelCont').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftModel(true); });
   $('bExitClassic').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(true); });
   $('bExitAssisted').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(false); });
 }

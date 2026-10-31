@@ -23,7 +23,9 @@
     // drifting (the drift assists own the car then), for STEER_LIMIT_AFTER_DRIFT s after a drift so a flick
     // into the next drift stays the player's, when slow, and in reverse.
     limitSteer(t, car, inp, steerAng, fwd, right, vf) {
-      if (t.steerLimit <= 0 || inp.steerAssist === false || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
+      const cont = t.driftModel >= 0.5;
+      if (t.steerLimit <= 0 || inp.steerAssist === false || (cont ? car.sideways >= 0.25 : car.drifting) ||
+        (!cont && car.sinceDrift < STEER_LIMIT_AFTER_DRIFT) || vf < 5 || steerAng === 0) return steerAng;
       const vF = M.add(car.vel, M.cross(car.w, M.mul(fwd, FRONT_AXLE)));
       const dir = Math.atan2(M.dot(vF, right), Math.max(M.dot(vF, fwd), 4)); // same low-speed floor as the tire model
       let L = t.steerLimit * t.slipPeak;
@@ -33,7 +35,37 @@
         const rear = -Math.sign(steerAng) * Math.atan2(M.dot(vR, right), Math.max(M.dot(vR, fwd), 4)) / t.slipPeak;
         L *= Math.max(0, 1 - t.steerLimitRear * Math.max(0, rear - 0.9));
       }
-      return steerAng > 0 ? Math.min(steerAng, Math.max(0, dir + L)) : Math.max(steerAng, Math.min(0, dir - L));
+      const limited = steerAng > 0 ? Math.min(steerAng, Math.max(0, dir + L)) : Math.max(steerAng, Math.min(0, dir - L));
+      // continuous model: the limit fades out as the car slides, so it never fights a drift
+      return cont ? limited + (steerAng - limited) * Math.min(1, 4 * (car.sideways || 0)) : limited;
+    },
+
+    // Continuous drift: the front wheel angle. While the car slides, the wheels self-align with the direction
+    // the front axle moves in (caster), and the steering range opens up: input is then relative to the motion.
+    steerContinuous(t, car, steerAng, inp, fwd, right) {
+      const s = car.sideways || 0;
+      if (s <= 0) return steerAng;
+      const vF = M.add(car.vel, M.cross(car.w, M.mul(fwd, FRONT_AXLE)));
+      const dir = Math.atan2(M.dot(vF, right), Math.max(Math.abs(M.dot(vF, fwd)), 4));
+      return steerAng + s * (t.driftCaster * dir + (inp.steer || 0) * t.driftSteerRange);
+    },
+
+    // Continuous drift: no drift state. The slide factor (0..1) follows the slide angle - effects fade in from
+    // slideStart to slideFull and out again past slideSpin, so a spin carries on by its own momentum.
+    // car.drifting / driftDir are only derived from it, for the HUD, skid marks, sound and camera.
+    updateSlide(t, car, grounded, vf, dt) {
+      const fwd = car.fwd, right = M.cross(fwd, car.up);
+      const a = Math.abs(Math.atan2(M.dot(car.vel, right), M.dot(car.vel, fwd)));   // 0..pi (pi = backwards)
+      const smooth = (x, a0, a1) => { const u = Math.max(0, Math.min(1, (x - a0) / (a1 - a0))); return u * u * (3 - 2 * u); };
+      const speedFade = smooth(Math.abs(vf), 4, 9);
+      // sideways: how far into a slide the car is (stays 1 through a spin); slide: the drift effects, which fade
+      // out again past slideSpin
+      car.sideways = grounded >= 2 ? smooth(a, t.slideStart, t.slideFull) * speedFade : 0;
+      car.slide = car.sideways * (1 - smooth(a, t.slideSpin, Math.PI / 2));
+      const beta = Math.atan2(M.dot(car.vel, right), Math.max(1, Math.abs(vf)));
+      car.drifting = car.slide > 0.3;
+      if (car.drifting) car.driftDir = -Math.sign(beta);
+      car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
     },
 
     // Drift state machine.
@@ -88,7 +120,11 @@
     },
 
     // How drifting changes the tire model (identity values when not drifting).
-    tireMods(t, drifting) {
+    tireMods(t, drifting, car) {
+      if (t.driftModel >= 0.5) {
+        const s = car.slide || 0;
+        return { continuous: true, slide: s, rearGripMul: 1 + (t.slideRearGrip - 1) * s };
+      }
       return drifting
         ? { rearGripMul: t.driftGrip, brakeMul: 0.2, drivePastGrip: t.driftPower, scrubKeep: t.driftKeep }
         : { rearGripMul: 1, brakeMul: 1, drivePastGrip: null, scrubKeep: 0 };
@@ -115,7 +151,23 @@
         rollAssist = (err * 70 - M.dot(w, fwd) * 9) * t.stability;
       }
       const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
-      if (grounded >= 2 && Math.abs(vf) > 8) {
+      if (t.driftModel >= 0.5) {
+        // continuous: no angle hold; the carve fades in with the slide (rotating vel toward the nose)
+        const s = car.slide || 0;
+        if (s > 0) {
+          const nv = M.rotAxis(vel, up, beta * t.slideCarve * s * dt);
+          vel[0] = nv[0]; vel[1] = nv[1]; vel[2] = nv[2];
+        }
+        // steering controls how fast the slide angle changes (no target angle): into the slide widens it,
+        // nothing relaxes it slowly, countersteer straightens it fast. Fades out past slideSpin (with s).
+        if (s > 0 && t.slideControl > 0) {
+          const dir = -Math.sign(beta) || 1;                     // +1 = sliding with the nose to the right
+          const u = (inp.steer || 0) * dir;                      // > 0 = steering into the slide
+          const A = Math.abs(beta);
+          const rate = u >= 0 ? u * t.slideRateIn - (1 - u) * t.slideRelax * A : u * t.slideRateOut - t.slideRelax * A;
+          yawAssist = (-dir * rate - dBeta) * t.slideControl * s;
+        }
+      } else if (grounded >= 2 && Math.abs(vf) > 8) {
         if (car.drifting) {
           const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
           if (t.driftControl >= 0.5) {

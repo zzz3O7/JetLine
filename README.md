@@ -11,7 +11,7 @@ and a skate-park arena, with jets, air brakes that work as wings, drifting and a
 
 Controls: W/S throttle and brake (in the air with the air brakes or jet: pitch), A/D steer (in the air: roll),
 Shift jet (in the air it also lets you pitch and roll while it fires), Space air brakes (hold in a corner for a tight grip turn), Alt handbrake (tap while steering to drift, hold to brake the rear wheels), tap S while steering to drift (in a drift the steering sets the angle; let go or countersteer to straighten out, countersteer + tap S to switch sides), Enter back to checkpoint, R restart,
-T tuning, C camera, G ghost, M sound, X drift exit classic / assisted.
+T tuning, C camera, G ghost, M sound, X drift exit classic / assisted, V drift model classic / continuous (continuous: tap A/D to steer the slide, hold to spin, S while steering = handbrake).
 
 ## Hosting on a VPS
 

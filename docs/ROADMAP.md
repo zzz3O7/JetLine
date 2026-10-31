@@ -25,13 +25,14 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
 
 ## 2. Continuous drift (experiment behind a switch, next to today's drift)
 Goal: nothing switches on or off, spins are a real risk, drifting stays the most rewarding line.
-- [ ] No drift on/off state: carve, speed kept, engine push and lower rear grip fade in with the slide angle.
-- [ ] No angle hold: the front tires control the rotation. On keyboard you tap to control the angle;
-      holding too long spins; countersteering catches it.
-- [ ] Tire grip drops once a tire slides; braking and throttle take grip away from cornering, so lift-off,
+- [x] No drift on/off state: carve, speed kept, engine push and lower rear grip fade in with the slide angle.
+- [x] No angle hold: steering controls how fast the slide angle changes (into the slide widens it, nothing
+      relaxes it, countersteer straightens it), with caster self-aligning the front wheels. On keyboard you tap
+      to control the angle; holding too long spins; countersteering catches it.
+- [x] Tire grip drops once a tire slides; braking and throttle take grip away from cornering, so lift-off,
       flicks and the handbrake start drifts through physics.
-- [ ] The steering limit backs off once the car is sliding (it should never fight a drift).
-- [ ] Test drivers that tap like a keyboard player: holding spins, tapping about half the time sustains a
+- [x] The steering limit backs off once the car is sliding (it should never fight a drift).
+- [x] Test drivers that tap like a keyboard player: holding spins, tapping about half the time sustains a
       drift, countersteering recovers, and a drift beats the air-brake line on the Hairpin.
 - [ ] Compare against today's drift on the Hairpin; the better one stays.
 - Enables tricks like spinning on purpose before a ramp for a 360 around the vertical axis.
@@ -51,7 +52,7 @@ Tracks are designed around a car's specialty, so the cars come first.
 ## Later
 - Re-balance drift risk against reward once the drift model is settled.
 - Key rebinding.
-- Unity port (handbrake on Alt).
+- Unity port (handbrake on Alt; in browsers Alt is taken, so S while steering works as the handbrake).
 
 ### Phone and gamepad port (decisions so far)
 - Same physics and the same drift as PC; only the input mapping differs.

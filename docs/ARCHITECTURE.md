@@ -13,7 +13,7 @@ rendering, input and UI are a separate layer on top.
 | `src/track/world.js` | engine, **prototype** | raycasts and point queries against track boxes | **deleted**: `MeshCollider` + `Physics.Raycast` |
 | `src/sim/vehicle.js` | vehicle | raycast wheels, suspension, tires, engine and brakes, jet and fuel | ports: `AddForceAtPosition` in `FixedUpdate` |
 | `src/sim/aero.js` | vehicle | drag, ground effect, air brake flaps, flat-plate lift, tail fin | ports as is |
-| `src/sim/arcade.js` | gameplay | steering limit, drift state machine (player-controlled angle), auto drift, roll / anti-spin / loop assists, air control | ports as is |
+| `src/sim/arcade.js` | gameplay | steering limit, two drift models (classic: drift state machine with a held angle and auto drift; continuous: no state, effects fade in with the slide angle, steering sets the slide's rotation rate), roll / anti-spin / loop assists, air control | ports as is |
 | `src/sim/car.js` | glue | runs the layers in a fixed order each step | `CarController.FixedUpdate` |
 | `src/sim/tuning.js` | data | every tunable number, grouped by layer | a `ScriptableObject` |
 | `src/track/geometry.js` | content | level piece list → oriented boxes, gates, centerline; eased curves (curvature ramps in and out) and radius-based corners | mesh generator (visual + collider) |
@@ -33,6 +33,7 @@ The **engine** layer exists only because a browser has no physics engine.
 2. **arcade state** – landing window, sideways slide angle, drift state machine (`Arcade.updateLanding`, `Arcade.updateDrift`)
 3. **wheels** – suspension force, then tire force, per wheel (`Vehicle.suspensionForce`, `Vehicle.tireForce`).
    Drifting changes the tires only through a small modifier object (`Arcade.tireMods`); with identity values the tire model is plain physics.
+   The continuous drift model uses `Vehicle.tireForceContinuous`: grip falls past the peak slip angle, drive and brakes share a friction circle with cornering, and a locked handbrake wheel slides.
 4. **assists** – roll assist, anti-spin assist, drift angle hold and carve (`Arcade.groundAssists`)
 5. **jet** – thrust and fuel (`Vehicle.jet`)
 6. **aero** – flaps follow input, then all aerodynamic forces (`Aero.apply`)

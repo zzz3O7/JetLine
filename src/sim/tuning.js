@@ -59,6 +59,25 @@
       jetAirControl: 1,       // share of air control while the jet is firing (no fuel, no control)
     },
     drift: {
+      driftModel: 0,          // 0 = classic (drift state, the game holds the angle); 1 = continuous (no state:
+                              //     drift effects fade in with the slide angle, the tires control the rotation)
+      // --- continuous model only
+      slideStart: 0.08,       // rad (4.6 degrees): slide angle where drift effects begin to fade in
+      slideFull: 0.35,        // rad (20 degrees): ... and where they are fully on
+      slideSpin: 0.75,        // rad (43 degrees): past this they fade out again (a spin carries on by momentum)
+      tireSlideGrip: 0.85,    // grip of a fully sliding tire, as a share of its peak
+      tireSlideRange: 2,      // how far past the peak slip angle (in multiples of it) grip takes to fall that far
+      driftCaster: 0.8,       // while sliding, the front wheels self-align with the direction they move in (caster):
+                              //     no input straightens the car, steering in rotates it, countersteer recovers
+      driftSteerRange: 0.6,   // rad of extra steering range at full slide (fast cars steer little, slides need more)
+      slideRearGrip: 0.85,    // rear grip multiplier at full slide
+      slideRateIn: 0.7,       // rad/s the slide angle grows at with full steering into the slide (holding it ends in a spin)
+      slideRateOut: 2.0,      // rad/s it shrinks at with full countersteer
+      slideRelax: 0.8,        // 1/s: with no steering the angle relaxes toward straight at this rate
+      slideControl: 10,       // how firmly the car follows those rates (1/s); fades out past slideSpin, so spins run free
+      slideCarve: 2.4,        // how fast a slide turns into forward motion (fades with the slide)
+      slidePower: 1.4,        // engine force multiplier at full slide (still limited by rear grip: power oversteer)
+      // --- both models
       driftGrip: 0.5,         // rear grip multiplier while drifting
       driftControl: 1,        // 0 = holding A/D turns the angle, no input holds it; 1 = steering sets the angle, release straightens
       driftKick: 0,           // rad: a brake-tap drift starts at least this sideways
