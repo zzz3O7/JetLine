@@ -36,15 +36,17 @@ Goal: nothing switches on or off, spins are a real risk, drifting stays the most
 - [ ] Compare against today's drift on the Hairpin; the better one stays.
 - Enables tricks like spinning on purpose before a ramp for a 360 around the vertical axis.
 
-## 3. Track editor
-- [ ] Build tracks from pieces (corners by radius and bank, ramps, gaps, loops), live preview,
-      instant test drive, share a track as a code. Race tracks first, free placement later.
-
-## 4. Cars
+## 3. Cars
+Tracks are designed around a car's specialty, so the cars come first.
 - [ ] Per-car tuning: air brake lift, drag and control strength, jet tank size and recharge
       (tank refills at checkpoints).
-- [ ] A few cars with different characters, and tracks built for them: a gliding / flying track,
-      a "don't correct in the air" track.
+- [ ] A few cars with different characters, specialties and signature moves (a glider, a car that
+      punishes correcting in the air, ...). Prototype each on small hand-built test tracks like the Hairpin.
+
+## 4. Track editor
+- [ ] Build tracks from pieces (corners by radius and bank, ramps, gaps, loops), live preview,
+      instant test drive, share a track as a code. Race tracks first, free placement later.
+- [ ] Tracks designed for each car's specialty.
 
 ## Later
 - Re-balance drift risk against reward once the drift model is settled.
