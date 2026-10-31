@@ -36,7 +36,9 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
       limit applies to sticks and tilt too. (Tried and removed: a stick past 90% starting a drift - unfair to
       keyboards - and a stick spin-out in a drift - too sudden.)
 - [x] Smoother drift exits: the carve stops as soon as you straighten out (no pause while the path keeps curving),
-      and the drift tires fade back to normal as the angle closes (no snap at the end).
+      and the drift tires fade back to normal as the angle closes (no snap at the end). The straightening is as firm
+      as holding an angle (driftExitGain 1), so let-go exits are gentle. The "assisted exit" (X: countersteer
+      recovery and a catch after the drift) is gone; the smooth exit made it unnecessary.
 - [x] One switching rule: in a drift the steering sets a signed target angle (left of straight, right of straight,
       released = straight). Countersteering swings the car across without the drift ending in between, the same with
       or without S at any moment; the carve only acts toward the target side. Replaces the brake-tap switch rule and

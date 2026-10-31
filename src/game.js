@@ -373,7 +373,6 @@ addEventListener('keydown', (e) => {
     if (e.code === 'KeyG') { ghostOn = !ghostOn; toast(ghostOn ? 'Ghost on' : 'Ghost off'); }
     if (e.code === 'KeyM') { audio.muted = !audio.muted; store.set('muted', audio.muted); toast(audio.muted ? 'Sound off' : 'Sound on'); }
     if (e.code === 'KeyH') showStartCard(true);
-    if (e.code === 'KeyX') setDriftExit(!isClassicExit());
   }
   keys.add(e.code); tapped.add(e.code);
   audio.start();
@@ -611,8 +610,6 @@ const SLIDERS = {
   driftKick: ['Brake-tap kick angle (rad)', 0, 0.8, 0.01],
   driftSteerRate: ['Angle change speed (rad/s), mode 0', 0.2, 6, 0.05],
   driftTargetAngle: ['Angle at full steering (rad), mode 1', 0.2, 1.1, 0.01],
-  driftRecover: ['Countersteer straightens faster (x)', 0, 4, 0.25],
-  driftCatch: ['Catch after a drift ends (s, 0 = off)', 0, 1.5, 0.05],
   driftMaxAngle: ['Max angle (rad)', 0.4, 1.4, 0.01],
   driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
   driftCarveExit: ['Carve kept while straightening out', 0, 1, 0.05],
@@ -657,42 +654,18 @@ const fmtVal = (v) => +(+v).toFixed(3);
     }
   }
 }
-// drift exit styles: classic (the default) = no countersteer recovery and no catch, exits are all skill;
-// assisted = recovery and a short catch. X switches between them while driving.
-const isClassicExit = () => tuning.driftRecover === 0 && tuning.driftCatch === 0;
-const ASSISTED_EXIT = { driftRecover: 1, driftCatch: 0.4 };
-function setDriftExit(classic) {
-  tuning.driftRecover = classic ? 0 : ASSISTED_EXIT.driftRecover;
-  tuning.driftCatch = classic ? 0 : ASSISTED_EXIT.driftCatch;
-  refreshTuneInputs(); saveTuning();
-  toast(classic ? 'Drift exit: classic' : 'Drift exit: assisted');
-}
-function updateExitButtons() {
-  const c = isClassicExit();
-  $('bExitClassic').classList.toggle('on', c); $('bExitAssisted').classList.toggle('on', !c);
-}
-{
-  // buttons above the Drift sliders
-  const heads = [...document.querySelectorAll('#tuneRows .tuneGroup')];
-  const drift = heads.find((h) => h.textContent === 'Drift');
-  const box = document.createElement('div'); box.className = 'tuneBtns';
-  box.innerHTML = '<button class="btn" id="bExitClassic" type="button">Classic exit</button><button class="btn" id="bExitAssisted" type="button">Assisted exit</button>';
-  drift.after(box);
-  $('bExitClassic').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(true); });
-  $('bExitAssisted').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(false); });
-}
 function updatePitchHelp() {
   const el = $('pitchHelp');
   if (el) el.textContent = tuning.airPitchInvert >= 0.5 ? 'nose down / nose up' : 'nose up / nose down';
 }
-updatePitchHelp(); updateExitButtons();
+updatePitchHelp();
 // settings that differ from the defaults
 function changedSettings() {
   const diff = {};
   for (const k in ALL_DEFAULTS) if (tuning[k] !== ALL_DEFAULTS[k]) diff[k] = tuning[k];
   return diff;
 }
-function saveTuning() { updatePitchHelp(); updateExitButtons(); store.set('tuning', changedSettings()); }
+function saveTuning() { updatePitchHelp(); store.set('tuning', changedSettings()); }
 function refreshTuneInputs() { for (const k in SLIDERS) { $('t_' + k).value = tuning[k]; $('o_' + k).textContent = fmtVal(tuning[k]); } }
 function toggleTune() { const p = $('tune'); p.hidden = !p.hidden; $('bTune').classList.toggle('on', !p.hidden); }
 $('bTune').addEventListener('click', (e) => { e.currentTarget.blur(); toggleTune(); });

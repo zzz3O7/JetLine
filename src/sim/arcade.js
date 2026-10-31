@@ -146,7 +146,7 @@
           const target = -car.driftDir * car.driftAngle * (beta * car.driftDir > 0 ? t.driftSwitchLead : 1);
           // countersteering straightens the car faster than just letting go (stiffer, equally damped hold)
           // straightening out (target angle zero) is firmer than holding an angle: no pause before the nose comes back
-          const g = (1 + t.driftRecover * Math.max(0, -k)) * (car.driftAngle > 0 ? 1 : t.driftExitGain);
+          const g = car.driftAngle > 0 ? 1 : t.driftExitGain;
           yawAssist = (target - beta) * 22 * g - dBeta * 8 * Math.sqrt(g);
           // carve: turn the velocity toward the nose, so a drift goes round the corner without losing speed
           // (a wider angle turns tighter)
@@ -160,12 +160,6 @@
             // anti-spin: past ~8 degrees of slide, nudge the nose toward the direction of travel (flat ground only)
             const ex = Math.sign(beta) * Math.max(0, Math.abs(beta) - 0.14);
             yawAssist = -ex * 14 * t.spinAssist * flatness;
-          }
-          if (t.driftCatch > 0 && car.sinceDrift < t.driftCatch) {
-            // catch after a drift: the car comes out of a drift rotating; damp that swing for a moment (fading
-            // out), so a countersteered exit settles straight instead of throwing the car into the opposite slide
-            const f = (1 - car.sinceDrift / t.driftCatch) * flatness;
-            yawAssist += (-beta * 12 - dBeta * 8) * f;
           }
         }
       }

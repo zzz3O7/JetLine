@@ -66,11 +66,9 @@
       driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
       driftMaxAngle: 1.1,     // rad (about 63 degrees)
       driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
-      driftRecover: 0,        // countersteering straightens a drift this much faster (x stiffness at full countersteer)
-      driftCatch: 0,          // s after a drift during which the leftover swing is damped (0 = off)
       driftExitBlend: 0.45,   // rad: while straightening out, drift tires fade back to normal below this angle (0 = switch at the end)
       driftSwitchLead: 0.5,   // countersteering while the car still points the old way aims this share of the new angle
-      driftExitGain: 3,       // how much firmer the straightening is when leaving a drift (steering released or countersteered)
+      driftExitGain: 1,       // how much firmer the straightening is once the steering is released (1 = as firm as holding an angle)
       driftCarveExit: 0,      // share of the carve kept while straightening out (steering released or countersteered)
       driftCarve: 2.0,        // how fast the slide turns into forward motion
       driftKeep: 0.95,        // share of tire scrub ignored while drifting (keeps speed)

@@ -38,7 +38,6 @@ const patterns = [
 for (const v of [25, 40]) {
   console.log(`--- ${v * 3.6} km/h`);
   for (const [name, f] of patterns) console.log(`${name.padEnd(36)} ${exit(v, f)}`);
-  console.log(`${'countersteer, let go 0.2 s late (catch and recovery off)'.padEnd(36)} ${exit(v, late(0.2), { driftCatch: 0, driftRecover: 0 })}`);
 }
 function chain(v) {
   const car = new JC.Car({ ...JC.defaultTuning });
