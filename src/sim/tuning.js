@@ -11,6 +11,7 @@
       engineForce: 14000,     // N at the rear wheels, fades out at engineTopSpeed
       engineTopSpeed: 75,     // m/s
       brakeForce: 16000,      // N, wheel brakes
+      handbrakeForce: 9000,   // N, handbrake on the rear wheels (also starts drifts)
       reverseForce: 5000,     // N
       rollRes: 4,             // rolling resistance per wheel, N per m/s
     },
@@ -54,7 +55,8 @@
       airYaw: 0,              // rad/s^2 (0: steering rolls instead)
       airRoll: 4.5,           // rad/s^2
       airDamping: 0.8,        // angular damping in the air (1/s)
-      airControlBase: 0,      // share of air control WITHOUT the air brakes open (0 = brakes needed)
+      airControlBase: 0,      // share of air control with neither air brakes nor jet (0 = no control)
+      jetAirControl: 1,       // share of air control while the jet is firing (no fuel, no control)
     },
     drift: {
       driftGrip: 0.5,         // rear grip multiplier while drifting

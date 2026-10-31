@@ -357,11 +357,14 @@ const tapped = new Set(); // keys pressed since the last frame, so very short ta
 const touch = { gas: 0, brake: 0, jet: 0, air: 0, left: 0, right: 0 };
 let tilt = { on: false, value: 0 };
 let steerKb = 0;
-const input = { throttle: 0, brake: 0, steer: 0, jet: false, airbrake: false, pitch: 0, roll: 0 };
+// The player's intents for the sim. Devices (keyboard, touch, gamepad, tilt) are translated into these in updateInput.
+const input = { throttle: 0, brake: 0, handbrake: 0, steer: 0, steerAssist: true, jet: false, airbrake: false, pitch: 0, roll: 0 };
 
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'AltLeft', 'AltRight'].includes(e.code)) e.preventDefault();
+  // Alt is the handbrake: keep the browser from treating Alt + a driving key as its own shortcut (where it lets us)
+  if (e.altKey && /^(Key[WASDEQ]|Arrow|Shift|Space)/.test(e.code)) e.preventDefault();
   if (!e.repeat) {
     if (e.code === 'KeyR') restart();
     if (e.code === 'Enter' || e.code === 'Backspace') respawn();
@@ -375,7 +378,7 @@ addEventListener('keydown', (e) => {
   keys.add(e.code); tapped.add(e.code);
   audio.start();
 });
-addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('keyup', (e) => { keys.delete(e.code); if (e.code === 'AltLeft' || e.code === 'AltRight') e.preventDefault(); });
 addEventListener('blur', () => keys.clear());
 
 const kd = (...c) => c.some((k) => keys.has(k) || tapped.has(k));
@@ -385,11 +388,11 @@ function readGamepad() {
     if (!gp || !gp.connected) continue;
     const dz = (v) => (Math.abs(v) < 0.12 ? 0 : (v - Math.sign(v) * 0.12) / 0.88);
     const b = (i) => (gp.buttons[i] ? gp.buttons[i].value : 0);
-    const r = { throttle: b(7), brake: b(6), steer: dz(gp.axes[0] || 0), pitch: dz(gp.axes[1] || 0), jet: b(0) > 0.5, air: b(1) > 0.5 || b(2) > 0.5, roll: b(5) - b(4) };
+    const r = { throttle: b(7), brake: b(6), steer: dz(gp.axes[0] || 0), pitch: dz(gp.axes[1] || 0), jet: b(0) > 0.5, air: b(1) > 0.5, handbrake: b(2), roll: b(5) - b(4) };
     if (gp.buttons[3] && gp.buttons[3].pressed && !gpPrev.y) respawn();
     if (gp.buttons[8] && gp.buttons[8].pressed && !gpPrev.back) restart();
     gpPrev.y = gp.buttons[3] && gp.buttons[3].pressed; gpPrev.back = gp.buttons[8] && gp.buttons[8].pressed;
-    if (r.throttle || r.brake || r.jet || r.air || Math.abs(r.steer) > 0.2) audio.start();
+    if (r.throttle || r.brake || r.handbrake || r.jet || r.air || Math.abs(r.steer) > 0.2) audio.start();
     return r;
   }
   return null;
@@ -404,10 +407,13 @@ function updateInput(dt) {
   steerKb += Math.max(-rate * dt, Math.min(rate * dt, Math.max(-1, Math.min(1, kSteer)) - steerKb));
   input.throttle = Math.max(kThr, touch.gas, gp ? gp.throttle : 0);
   input.brake = Math.max(kBrk, touch.brake, gp ? gp.brake : 0);
-  let steer = steerKb;
-  if (tilt.on) steer += tilt.value;
-  if (gp && Math.abs(gp.steer) > Math.abs(steer)) steer = gp.steer;
+  input.handbrake = Math.max(kd('AltLeft', 'AltRight') ? 1 : 0, gp ? gp.handbrake : 0);
+  // keys and touch arrows are on/off, so they get the steering limit; tilt and sticks are analog and don't
+  let steer = steerKb, assist = true;
+  if (tilt.on && Math.abs(tilt.value) > 0.02) { steer += tilt.value; assist = false; }
+  if (gp && Math.abs(gp.steer) > Math.abs(steer)) { steer = gp.steer; assist = false; }
   input.steer = Math.max(-1, Math.min(1, steer));
+  input.steerAssist = assist;
   input.jet = kd('ShiftLeft', 'ShiftRight') || !!touch.jet || !!(gp && gp.jet);
   input.airbrake = kd('Space') || !!touch.air || !!(gp && gp.air);
   // in the air: W / gas / stick up = nose up (arcade style); "Flight-sim pitch" flips it
@@ -565,6 +571,7 @@ const SLIDERS = {
   engineForce: ['Engine force (N)', 2000, 30000, 250],
   engineTopSpeed: ['Engine top speed (m/s)', 15, 120, 1],
   rollRes: ['Rolling resistance', 0, 40, 0.5],
+  handbrakeForce: ['Handbrake force (N)', 0, 30000, 500],
   jetThrust: ['Jet thrust (N)', 4000, 40000, 500],
   jetUnlimited: ['Unlimited (1 = on)', 0, 1, 1],
   jetCapacity: ['Tank (s of boost)', 1, 20, 0.5],
@@ -592,7 +599,8 @@ const SLIDERS = {
   airPitch: ['Pitch control', 0, 12, 0.25],
   airYaw: ['Yaw control', 0, 10, 0.25],
   airRoll: ['Roll control', 0, 10, 0.25],
-  airControlBase: ['Control without air brakes', 0, 1, 0.05],
+  airControlBase: ['Control without air brakes or jet', 0, 1, 0.05],
+  jetAirControl: ['Air control while the jet fires', 0, 1, 0.05],
   airDamping: ['Spin damping', 0, 4, 0.05],
   driftGrip: ['Rear grip', 0.15, 1, 0.01],
   driftControl: ['Control: 0 = hold turns angle, 1 = steering sets angle', 0, 1, 1],

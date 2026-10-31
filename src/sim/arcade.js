@@ -22,8 +22,8 @@
     // tightest grip turn. It only ever reduces steering (never adds countersteer), and is off while
     // drifting (the drift assists own the car then), for STEER_LIMIT_AFTER_DRIFT s after a drift so a flick
     // into the next drift stays the player's, when slow, and in reverse.
-    limitSteer(t, car, steerAng, fwd, right, vf) {
-      if (t.steerLimit <= 0 || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
+    limitSteer(t, car, inp, steerAng, fwd, right, vf) {
+      if (t.steerLimit <= 0 || inp.steerAssist === false || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
       const vF = M.add(car.vel, M.cross(car.w, M.mul(fwd, FRONT_AXLE)));
       const dir = Math.atan2(M.dot(vF, right), Math.max(M.dot(vF, fwd), 4)); // same low-speed floor as the tire model
       let L = t.steerLimit * t.slipPeak;
@@ -51,11 +51,12 @@
         car.driftAngle = Math.min(t.driftMaxAngle, angle);
       };
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
-      car.brakeBuf = car.drifting && inp.brake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
+      const anyBrake = Math.max(inp.brake || 0, inp.handbrake || 0);
+      car.brakeBuf = car.drifting && anyBrake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
         car.slideTimer = Math.abs(beta) > t.autoDriftAngle && grounded >= 2 ? (car.slideTimer || 0) + dt : 0;
-        if (grounded >= 3 && vf > t.driftMinSpeed && Math.abs(steerIn) > 0.4 && inp.brake > 0.5) {
+        if (grounded >= 3 && vf > t.driftMinSpeed && Math.abs(steerIn) > 0.4 && anyBrake > 0.5) {
           const dir = Math.sign(steerIn);
           start(dir, Math.max(t.driftKick, -dir * beta));
         } else if (t.autoDrift >= 0.5 && grounded >= 2 && vf > t.driftMinSpeed * 0.7 && Math.abs(beta) > t.autoDriftAngle && Math.abs(beta) < 1.5) {
@@ -162,8 +163,8 @@
       if (grounded === 0) {
         car.airTime += dt;
         if (!car.bodyContact) {
-          // the control surfaces are the air brake flaps: no flaps, (almost) no control
-          const ctl = t.airControlBase + (1 - t.airControlBase) * car.flaps;
+          // control comes from the air brake flaps, or from the jet while it is actually firing
+          const ctl = t.airControlBase + (1 - t.airControlBase) * Math.max(car.flaps, t.jetAirControl * car.jetLevel);
           M.axpy(w, right, (inp.pitch || 0) * t.airPitch * ctl * dt);
           M.axpy(w, up, -(inp.steer || 0) * t.airYaw * ctl * dt);
           const rollIn = Math.max(-1, Math.min(1, (inp.roll || 0) + (t.airYaw > 0 ? 0 : (inp.steer || 0))));

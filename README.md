@@ -9,8 +9,8 @@ and a skate-park arena, with jets, air brakes that work as wings, drifting and a
 - How the code is organized, and how it maps to a Unity port: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
-Controls: W/S throttle and brake (in the air with the air brakes held: pitch), A/D steer (in the air: roll),
-Shift jet, Space air brakes (hold in a corner for a tight grip turn), tap S while steering to drift (in a drift the steering sets the angle; let go or countersteer to straighten out, countersteer + tap S to switch sides), Enter back to checkpoint, R restart,
+Controls: W/S throttle and brake (in the air with the air brakes or jet: pitch), A/D steer (in the air: roll),
+Shift jet (in the air it also lets you pitch and roll while it fires), Space air brakes (hold in a corner for a tight grip turn), Alt handbrake (tap while steering to drift, hold to brake the rear wheels), tap S while steering to drift (in a drift the steering sets the angle; let go or countersteer to straighten out, countersteer + tap S to switch sides), Enter back to checkpoint, R restart,
 T tuning, C camera, G ghost, M sound, X drift exit classic / assisted.
 
 ## Hosting on a VPS

@@ -41,7 +41,7 @@
       const forces = new JC.Forces(pos, [0, -t.gravity * this.mass, 0]);
       const vf = M.dot(vel, fwd);
       const speed = M.len(vel);
-      const steerAng = A.limitSteer(t, this, (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff), fwd, right, vf);
+      const steerAng = A.limitSteer(t, this, inp, (inp.steer || 0) * t.steerMax / (1 + Math.abs(vf) * t.steerFalloff), fwd, right, vf);
       const rayLen = t.suspTravel + t.wheelRadius;
 
       // 1. sense
@@ -65,7 +65,7 @@
         const tire = V.tireForce(t, this, wh, tireCtx, mods, inp, fs);
         forces.at(tire.force, wh.mount); // at mount height, which keeps the car from tipping over
         wh.spin += tire.vl * dt / t.wheelRadius;
-        wh.cp = tire.cpt; wh.n = tire.n; wh.slipV = tire.vs; wh.longV = tire.vl; wh.slip = tire.slip; wh.brakeOn = inp.brake > 0.5 && vf > 3;
+        wh.cp = tire.cpt; wh.n = tire.n; wh.slipV = tire.vs; wh.longV = tire.vl; wh.slip = tire.slip; wh.brakeOn = (inp.brake > 0.5 || (!wh.front && inp.handbrake > 0.5)) && vf > 3;
       }
       this.grounded = grounded;
       this.inLoop = !!loopDir;
