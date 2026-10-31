@@ -617,6 +617,7 @@ const SLIDERS = {
   driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
   driftCarveExit: ['Carve kept while straightening out', 0, 1, 0.05],
   driftExitGain: ['Exit: how firmly the car straightens', 1, 6, 0.25],
+  driftSwitchLead: ['Switch: how far countersteer aims before straight', 0, 1, 0.05],
   driftExitBlend: ['Exit: tires fade back below angle (rad)', 0, 1, 0.01],
   driftCarve: ['Carve into the turn', 0, 5, 0.1],
   driftKeep: ['Speed kept', 0, 1, 0.01],
