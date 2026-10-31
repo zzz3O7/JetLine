@@ -87,6 +87,10 @@
         const vd = M.mul(car.vel, 1 / speed), fa = M.dot(force, vd);
         if (fa < 0) force = M.sub(force, M.mul(vd, fa * mods.scrubKeep));
       }
+      if (inp.handbrake > 0 && !wh.front) {
+        // handbrake: rear wheels only, never reverses, and not softened by drifting (holding it slows a drift)
+        force = M.add(force, M.mul(wf, -inp.handbrake * t.handbrakeForce * 0.5 * Math.tanh(vl / 0.5)));
+      }
       return { force, cpt, n, vl, vs, slip: alpha / t.slipPeak };
     },
 

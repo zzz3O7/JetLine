@@ -8,20 +8,20 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
 
 ## 0. Hosting
 - [x] `deploy.sh` and the self-contained site build (PR #8)
-- [ ] First deploy: DNS record `jetline` in Cloudflare, read-only deploy key, `./deploy.sh` on the VPS
+- [x] First deploy: DNS record `jetline` in Cloudflare, read-only deploy key, `./deploy.sh` on the VPS
       (domain `jetline.randover.site`). After that every merge goes live with `./deploy.sh update`.
 
 ## 1. Controls and air brake rules (PC)
-- [ ] Input layer: the game core only sees intents (steer, throttle, brake, jet, air brake, handbrake);
+- [x] Input layer: the game core only sees intents (steer, throttle, brake, jet, air brake, handbrake);
       keyboard input is translated into them in one place, so a phone or gamepad port later doesn't
       touch the physics. Steering limit stays a keyboard setting.
-- [ ] Handbrake on **Alt**: a tap while steering starts a drift, holding it brakes the rear wheels.
+- [x] Handbrake on **Alt**: a tap while steering starts a drift, holding it brakes the rear wheels.
       S still starts drifts too (and stays brake / reverse). If a browser misbehaves with Alt, S covers it.
-- [ ] Air brakes in the air: drag plus air control. Keep the current lift (gliding) for now.
-- [ ] Air brakes on the ground: downforce, as now (grip through load, so it also works on walls and
+- [x] Air brakes in the air: drag plus air control. Keep the current lift (gliding) for now.
+- [x] Air brakes on the ground: downforce, as now (grip through load, so it also works on walls and
       ceilings at speed), and it keeps costing speed.
-- [ ] Boost also unlocks air control, but only while the jet is actually firing (needs fuel).
-- [ ] Wings stay on the car model as the air brakes.
+- [x] Boost also unlocks air control, but only while the jet is actually firing (needs fuel).
+- [x] Wings stay on the car model as the air brakes.
 
 ## 2. Continuous drift (experiment behind a switch, next to today's drift)
 Goal: nothing switches on or off, spins are a real risk, drifting stays the most rewarding line.
