@@ -358,7 +358,7 @@ const touch = { gas: 0, brake: 0, jet: 0, air: 0, left: 0, right: 0 };
 let tilt = { on: false, value: 0 };
 let steerKb = 0;
 // The player's intents for the sim. Devices (keyboard, touch, gamepad, tilt) are translated into these in updateInput.
-const input = { throttle: 0, brake: 0, handbrake: 0, steer: 0, steerAssist: true, jet: false, airbrake: false, pitch: 0, roll: 0 };
+const input = { throttle: 0, brake: 0, handbrake: 0, steer: 0, jet: false, airbrake: false, pitch: 0, roll: 0 };
 
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -373,7 +373,6 @@ addEventListener('keydown', (e) => {
     if (e.code === 'KeyG') { ghostOn = !ghostOn; toast(ghostOn ? 'Ghost on' : 'Ghost off'); }
     if (e.code === 'KeyM') { audio.muted = !audio.muted; store.set('muted', audio.muted); toast(audio.muted ? 'Sound off' : 'Sound on'); }
     if (e.code === 'KeyH') showStartCard(true);
-    if (e.code === 'KeyX') setDriftExit(!isClassicExit());
   }
   keys.add(e.code); tapped.add(e.code);
   audio.start();
@@ -408,17 +407,21 @@ function updateInput(dt) {
   input.throttle = Math.max(kThr, touch.gas, gp ? gp.throttle : 0);
   input.brake = Math.max(kBrk, touch.brake, gp ? gp.brake : 0);
   input.handbrake = Math.max(kd('AltLeft', 'AltRight') ? 1 : 0, gp ? gp.handbrake : 0);
-  // keys and touch arrows are on/off, so they get the steering limit; tilt and sticks are analog and don't
-  let steer = steerKb, assist = true;
-  if (tilt.on && Math.abs(tilt.value) > 0.02) { steer += tilt.value; assist = false; }
-  if (gp && Math.abs(gp.steer) > Math.abs(steer)) { steer = gp.steer; assist = false; }
+  // every device plays by the same rules: the steering limit applies to keys, sticks and tilt alike
+  let steer = steerKb;
+  if (tilt.on) steer += tilt.value;
+  if (gp && Math.abs(gp.steer) > Math.abs(steer)) steer = gp.steer;
   input.steer = Math.max(-1, Math.min(1, steer));
-  input.steerAssist = assist;
   input.jet = kd('ShiftLeft', 'ShiftRight') || !!touch.jet || !!(gp && gp.jet);
   input.airbrake = kd('Space') || !!touch.air || !!(gp && gp.air);
   // in the air: W / gas / stick up = nose up (arcade style); "Flight-sim pitch" flips it
   const pitchSign = tuning.airPitchInvert >= 0.5 ? -1 : 1;
   input.pitch = Math.max(-1, Math.min(1, pitchSign * (input.throttle - input.brake - (gp ? gp.pitch : 0))));
+  // keyboard: S while steering hard at speed on the ground works as the handbrake (Alt, the real handbrake key,
+  // is grabbed by some browsers). S on its own stays the brake / reverse.
+  if (kBrk && Math.abs(steerKb) > 0.5 && car.grounded >= 2 && M.dot(car.vel, car.fwd) > 14) {
+    input.handbrake = 1; input.brake = Math.max(touch.brake, gp ? gp.brake : 0);
+  }
   input.roll = (kd('KeyE') ? 1 : 0) - (kd('KeyQ') ? 1 : 0) + (gp ? gp.roll : 0);
   if (!race.started && !race.finished && (input.throttle > 0.1 || input.jet || input.brake > 0.1)) startRun();
   tapped.clear();
@@ -571,7 +574,7 @@ const SLIDERS = {
   engineForce: ['Engine force (N)', 2000, 30000, 250],
   engineTopSpeed: ['Engine top speed (m/s)', 15, 120, 1],
   rollRes: ['Rolling resistance', 0, 40, 0.5],
-  handbrakeForce: ['Handbrake force (N)', 0, 30000, 500],
+  handbrakeGrip: ['Handbrake: locked rear wheels slide with grip', 0.2, 1.2, 0.05],
   jetThrust: ['Jet thrust (N)', 4000, 40000, 500],
   jetUnlimited: ['Unlimited (1 = on)', 0, 1, 1],
   jetCapacity: ['Tank (s of boost)', 1, 20, 0.5],
@@ -601,16 +604,18 @@ const SLIDERS = {
   airRoll: ['Roll control', 0, 10, 0.25],
   airControlBase: ['Control without air brakes or jet', 0, 1, 0.05],
   jetAirControl: ['Air control while the jet fires', 0, 1, 0.05],
-  airDamping: ['Spin damping', 0, 4, 0.05],
+  airDamping: ['Rotation damping (every axis)', 0, 4, 0.05],
   driftGrip: ['Rear grip', 0.15, 1, 0.01],
   driftControl: ['Control: 0 = hold turns angle, 1 = steering sets angle', 0, 1, 1],
   driftKick: ['Brake-tap kick angle (rad)', 0, 0.8, 0.01],
   driftSteerRate: ['Angle change speed (rad/s), mode 0', 0.2, 6, 0.05],
   driftTargetAngle: ['Angle at full steering (rad), mode 1', 0.2, 1.1, 0.01],
-  driftRecover: ['Countersteer straightens faster (x)', 0, 4, 0.25],
-  driftCatch: ['Catch after a drift ends (s, 0 = off)', 0, 1.5, 0.05],
   driftMaxAngle: ['Max angle (rad)', 0.4, 1.4, 0.01],
   driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
+  driftCarveExit: ['Carve kept while straightening out', 0, 1, 0.05],
+  driftExitGain: ['Exit: how firmly the car straightens', 1, 6, 0.25],
+  driftSwitchLead: ['Switch: how far countersteer aims before straight', 0, 1, 0.05],
+  driftExitBlend: ['Exit: tires fade back below angle (rad)', 0, 1, 0.01],
   driftCarve: ['Carve into the turn', 0, 5, 0.1],
   driftKeep: ['Speed kept', 0, 1, 0.01],
   driftPower: ['Engine push in a slide', 0, 1.5, 0.05],
@@ -649,42 +654,18 @@ const fmtVal = (v) => +(+v).toFixed(3);
     }
   }
 }
-// drift exit styles: classic (the default) = no countersteer recovery and no catch, exits are all skill;
-// assisted = recovery and a short catch. X switches between them while driving.
-const isClassicExit = () => tuning.driftRecover === 0 && tuning.driftCatch === 0;
-const ASSISTED_EXIT = { driftRecover: 1, driftCatch: 0.4 };
-function setDriftExit(classic) {
-  tuning.driftRecover = classic ? 0 : ASSISTED_EXIT.driftRecover;
-  tuning.driftCatch = classic ? 0 : ASSISTED_EXIT.driftCatch;
-  refreshTuneInputs(); saveTuning();
-  toast(classic ? 'Drift exit: classic' : 'Drift exit: assisted');
-}
-function updateExitButtons() {
-  const c = isClassicExit();
-  $('bExitClassic').classList.toggle('on', c); $('bExitAssisted').classList.toggle('on', !c);
-}
-{
-  // buttons above the Drift sliders
-  const heads = [...document.querySelectorAll('#tuneRows .tuneGroup')];
-  const drift = heads.find((h) => h.textContent === 'Drift');
-  const box = document.createElement('div'); box.className = 'tuneBtns';
-  box.innerHTML = '<button class="btn" id="bExitClassic" type="button">Classic exit</button><button class="btn" id="bExitAssisted" type="button">Assisted exit</button>';
-  drift.after(box);
-  $('bExitClassic').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(true); });
-  $('bExitAssisted').addEventListener('click', (e) => { e.currentTarget.blur(); setDriftExit(false); });
-}
 function updatePitchHelp() {
   const el = $('pitchHelp');
   if (el) el.textContent = tuning.airPitchInvert >= 0.5 ? 'nose down / nose up' : 'nose up / nose down';
 }
-updatePitchHelp(); updateExitButtons();
+updatePitchHelp();
 // settings that differ from the defaults
 function changedSettings() {
   const diff = {};
   for (const k in ALL_DEFAULTS) if (tuning[k] !== ALL_DEFAULTS[k]) diff[k] = tuning[k];
   return diff;
 }
-function saveTuning() { updatePitchHelp(); updateExitButtons(); store.set('tuning', changedSettings()); }
+function saveTuning() { updatePitchHelp(); store.set('tuning', changedSettings()); }
 function refreshTuneInputs() { for (const k in SLIDERS) { $('t_' + k).value = tuning[k]; $('o_' + k).textContent = fmtVal(tuning[k]); } }
 function toggleTune() { const p = $('tune'); p.hidden = !p.hidden; $('bTune').classList.toggle('on', !p.hidden); }
 $('bTune').addEventListener('click', (e) => { e.currentTarget.blur(); toggleTune(); });

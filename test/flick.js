@@ -18,9 +18,10 @@ function exit(v, pattern, tun = {}) {
     s = kb(s, inp.steer, 1 / 240);
     car.step(1 / 240, { steer: s, throttle: 1, brake: inp.brake || 0 }, w);
     if (t >= 2) {
-      if (ended === null && (!car.drifting || car.driftDir < 0)) ended = t - 2;
+      // out: the old drift is over (the car is straight, or not drifting); then: does it slide 10 degrees the other way?
+      if (ended === null && (!car.drifting || car.slip * 57.3 > -3)) ended = t - 2;
       if (ended !== null) swing = Math.max(swing, car.slip * 57.3);
-      if (ended !== null && car.drifting && again === null) again = (car.driftDir < 0 ? 'L' : 'R') + (t - 2).toFixed(2);
+      if (ended !== null && car.drifting && car.slip * 57.3 > 10 && again === null) again = 'L' + (t - 2).toFixed(2);
     }
   }
   return `out ${ended === null ? 'never' : ended.toFixed(2) + 's'}  swing ${swing.toFixed(0)}°  ${again ? 'drift ' + again : 'stays out'}`;
@@ -37,7 +38,6 @@ const patterns = [
 for (const v of [25, 40]) {
   console.log(`--- ${v * 3.6} km/h`);
   for (const [name, f] of patterns) console.log(`${name.padEnd(36)} ${exit(v, f)}`);
-  console.log(`${'countersteer, let go 0.2 s late (catch and recovery off)'.padEnd(36)} ${exit(v, late(0.2), { driftCatch: 0, driftRecover: 0 })}`);
 }
 function chain(v) {
   const car = new JC.Car({ ...JC.defaultTuning });

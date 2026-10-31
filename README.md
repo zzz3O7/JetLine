@@ -10,8 +10,8 @@ and a skate-park arena, with jets, air brakes that work as wings, drifting and a
 - What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Controls: W/S throttle and brake (in the air with the air brakes or jet: pitch), A/D steer (in the air: roll),
-Shift jet (in the air it also lets you pitch and roll while it fires), Space air brakes (hold in a corner for a tight grip turn), Alt handbrake (tap while steering to drift, hold to brake the rear wheels), tap S while steering to drift (in a drift the steering sets the angle; let go or countersteer to straighten out, countersteer + tap S to switch sides), Enter back to checkpoint, R restart,
-T tuning, C camera, G ghost, M sound, X drift exit classic / assisted.
+Shift jet (in the air it also lets you pitch and roll while it fires), Space air brakes (hold in a corner for a tight grip turn), S while steering (or Alt) is the handbrake: it locks the rear wheels, starts drifts, and in a drift a short press swings the car wider while holding it too long spins you out (in a drift the steering sets the angle; let go to straighten out, countersteer and hold to swing into a drift the other way), Enter back to checkpoint, R restart,
+T tuning, C camera, G ghost, M sound.
 
 ## Hosting on a VPS
 

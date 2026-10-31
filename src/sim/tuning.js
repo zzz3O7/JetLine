@@ -11,7 +11,7 @@
       engineForce: 14000,     // N at the rear wheels, fades out at engineTopSpeed
       engineTopSpeed: 75,     // m/s
       brakeForce: 16000,      // N, wheel brakes
-      handbrakeForce: 9000,   // N, handbrake on the rear wheels (also starts drifts)
+      handbrakeGrip: 0.8,     // the handbrake locks the rear wheels: they slide with this share of their grip
       reverseForce: 5000,     // N
       rollRes: 4,             // rolling resistance per wheel, N per m/s
     },
@@ -54,7 +54,7 @@
       airPitch: 5.5,          // rad/s^2
       airYaw: 0,              // rad/s^2 (0: steering rolls instead)
       airRoll: 4.5,           // rad/s^2
-      airDamping: 0.8,        // angular damping in the air (1/s)
+      airDamping: 0.15,       // rotation damping in the air, every axis (1/s): flips and flat spins carry on
       airControlBase: 0,      // share of air control with neither air brakes nor jet (0 = no control)
       jetAirControl: 1,       // share of air control while the jet is firing (no fuel, no control)
     },
@@ -66,8 +66,10 @@
       driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
       driftMaxAngle: 1.1,     // rad (about 63 degrees)
       driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
-      driftRecover: 0,        // countersteering straightens a drift this much faster (x stiffness at full countersteer)
-      driftCatch: 0,          // s after a drift during which the leftover swing is damped (0 = off)
+      driftExitBlend: 0.45,   // rad: while straightening out, drift tires fade back to normal below this angle (0 = switch at the end)
+      driftSwitchLead: 0.5,   // countersteering while the car still points the old way aims this share of the new angle
+      driftExitGain: 1,       // how much firmer the straightening is once the steering is released (1 = as firm as holding an angle)
+      driftCarveExit: 0,      // share of the carve kept while straightening out (steering released or countersteered)
       driftCarve: 2.0,        // how fast the slide turns into forward motion
       driftKeep: 0.95,        // share of tire scrub ignored while drifting (keeps speed)
       driftPower: 1.2,        // share of engine force that still pushes during a drift
