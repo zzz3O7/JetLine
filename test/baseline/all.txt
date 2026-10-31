@@ -301,8 +301,8 @@ jump at piece 31: 72:OFF 90:1.5s 108:1.8s 126:2.1s 144:2.4s 162:2.7s 180:3.0s 19
 ##### controls
 handbrake held 1 s from 108 km/h, straight: 73 km/h no drift
 brake held 1 s from 108 km/h, straight:     49 km/h
-handbrake tap while steering: drift at 0.10 s end 127 km/h
-drift 2.5 s: 137 km/h; holding the handbrake from 1 s: 105 km/h (still drifting)
+handbrake tap while steering: drift at 0.10 s end 122 km/h
+drift 2.5 s: 137 km/h; holding the handbrake from 1 s: 50 km/h (drift ended)
 air control, nothing:                pitch rate 0.01 rad/s
 air control, air brakes:             pitch rate 1.75 rad/s
 air control, jet:                    pitch rate 1.92 rad/s
@@ -310,6 +310,9 @@ air control, jet, empty tank:        pitch rate 0.01 rad/s
 air control, jet, jetAirControl 0:   pitch rate 0.01 rad/s
 full steering at 144 km/h, steerAssist true: grip slip 4°
 full steering at 144 km/h, steerAssist false: drift slip 32°
+drift, handbrake held 0.3 s:         max angle 61°, still drifting, end 129 km/h
+drift, handbrake held 0.6 s:         max angle 165°, spun out, end 16 km/h
+drift, handbrake held 1 s:           max angle 169°, spun out, end 23 km/h
 ##### fuzz0
 { steps: 144000, nan: 0, deepCenterPenetrations: 0, falls: 88 }
 ##### fuzz1

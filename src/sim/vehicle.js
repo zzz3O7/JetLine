@@ -87,9 +87,12 @@
         const vd = M.mul(car.vel, 1 / speed), fa = M.dot(force, vd);
         if (fa < 0) force = M.sub(force, M.mul(vd, fa * mods.scrubKeep));
       }
-      if (inp.handbrake > 0 && !wh.front) {
-        // handbrake: rear wheels only, never reverses, and not softened by drifting (holding it slows a drift)
-        force = M.add(force, M.mul(wf, -inp.handbrake * t.handbrakeForce * 0.5 * Math.tanh(vl / 0.5)));
+      if (inp.handbrake > 0.5 && !wh.front) {
+        // handbrake: the rear wheels lock and slide. Their friction opposes the sliding direction, so they slow
+        // the car and give almost no cornering grip; not softened by drifting.
+        const vsl = Math.hypot(vl, vs), f = t.grip * gripLoad * t.rearGrip * t.handbrakeGrip;
+        const k = Math.min(1, vsl / 1); // fades in from standstill, so a stopped car doesn't jitter
+        force = vsl > 1e-3 ? M.add(M.mul(wf, -f * k * vl / vsl), M.mul(side, -f * k * vs / vsl)) : [0, 0, 0];
       }
       return { force, cpt, n, vl, vs, slip: alpha / t.slipPeak };
     },

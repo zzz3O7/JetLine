@@ -47,10 +47,11 @@
     updateDrift(t, car, inp, grounded, vf, beta, dt) {
       const steerIn = inp.steer || 0;
       const start = (dir, angle) => {
-        car.drifting = true; car.driftDir = dir; car.driftTimer = 0;
+        car.drifting = true; car.driftDir = dir; car.driftTimer = 0; car.hbHeld = inp.handbrake > 0.5;
         car.driftAngle = Math.min(t.driftMaxAngle, angle);
       };
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
+
       const anyBrake = Math.max(inp.brake || 0, inp.handbrake || 0);
       car.brakeBuf = car.drifting && anyBrake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
@@ -79,6 +80,9 @@
         start(-car.driftDir, 0);
       } else {
         car.driftTimer += dt;
+        // handbrake released while the car is rotated past the drift range: the drift is over (spin out)
+        if (car.hbHeld && !(inp.handbrake > 0.5) && Math.abs(beta) > t.driftMaxAngle) car.drifting = false;
+        car.hbHeld = inp.handbrake > 0.5;
         // a short grace period after the start, so a drift starting nearly straight can be widened
         const exit = t.driftControl >= 0.5
           ? (Math.abs(steerIn) < 0.15 || Math.sign(steerIn) !== car.driftDir) && Math.abs(beta) < 0.16
@@ -116,7 +120,10 @@
       }
       const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
       if (grounded >= 2 && Math.abs(vf) > 8) {
-        if (car.drifting) {
+        if (car.drifting && inp.handbrake > 0.5) {
+          // handbrake held in a drift: the rear wheels are locked and the angle hold lets go, so the car rotates
+          // on its own momentum (steering and throttle push it on); let go in time and the hold catches it again
+        } else if (car.drifting) {
           const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
           if (t.driftControl >= 0.5) {
             // steering sets the angle: full steering = driftTargetAngle, releasing straightens the car

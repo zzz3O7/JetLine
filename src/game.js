@@ -419,6 +419,11 @@ function updateInput(dt) {
   // in the air: W / gas / stick up = nose up (arcade style); "Flight-sim pitch" flips it
   const pitchSign = tuning.airPitchInvert >= 0.5 ? -1 : 1;
   input.pitch = Math.max(-1, Math.min(1, pitchSign * (input.throttle - input.brake - (gp ? gp.pitch : 0))));
+  // keyboard: S while steering hard at speed on the ground works as the handbrake (Alt, the real handbrake key,
+  // is grabbed by some browsers). S on its own stays the brake / reverse.
+  if (kBrk && Math.abs(steerKb) > 0.5 && car.grounded >= 2 && M.dot(car.vel, car.fwd) > 14) {
+    input.handbrake = 1; input.brake = Math.max(touch.brake, gp ? gp.brake : 0);
+  }
   input.roll = (kd('KeyE') ? 1 : 0) - (kd('KeyQ') ? 1 : 0) + (gp ? gp.roll : 0);
   if (!race.started && !race.finished && (input.throttle > 0.1 || input.jet || input.brake > 0.1)) startRun();
   tapped.clear();
@@ -571,7 +576,7 @@ const SLIDERS = {
   engineForce: ['Engine force (N)', 2000, 30000, 250],
   engineTopSpeed: ['Engine top speed (m/s)', 15, 120, 1],
   rollRes: ['Rolling resistance', 0, 40, 0.5],
-  handbrakeForce: ['Handbrake force (N)', 0, 30000, 500],
+  handbrakeGrip: ['Handbrake: locked rear wheels slide with grip', 0.2, 1.2, 0.05],
   jetThrust: ['Jet thrust (N)', 4000, 40000, 500],
   jetUnlimited: ['Unlimited (1 = on)', 0, 1, 1],
   jetCapacity: ['Tank (s of boost)', 1, 20, 0.5],

@@ -31,7 +31,7 @@
       for (const w of this.wheels) { w.comp = w.prevComp = 0; w.contact = false; }
       this.grounded = 0; this.bodyContact = false; this.airTime = 0; this.flaps = 0; this.jetLevel = 0;
       this.fuel = 1; this.hullPrev = null; this.drifting = false; this.driftTimer = 0; this.driftDir = 0;
-      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99; this.brakeBuf = 0;
+      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99; this.brakeBuf = 0; this.hbHeld = false;
     }
 
     step(dt, inp, world) {
@@ -53,7 +53,8 @@
       const beta = Math.atan2(M.dot(vel, right), Math.max(1, Math.abs(vf))); // sideways slide angle
       this.prevBeta = this.slip; this.slip = beta;
       A.updateDrift(t, this, inp, grounded, vf, beta, dt);
-      const mods = A.tireMods(t, this.drifting);
+      // handbrake held: plain tires (no drift speed keeping), so the car rotates freely on locked rear wheels
+      const mods = A.tireMods(t, this.drifting && !(inp.handbrake > 0.5));
 
       // 3. wheel forces
       const tireCtx = { fwd, right, down, steerAng, vf, speed };

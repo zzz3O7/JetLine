@@ -49,3 +49,21 @@ for (const assist of [true, false]) {
   const r = onFlat(40, () => ({ throttle: 1, steer: 1, steerAssist: assist }), 2, {});
   console.log(`full steering at ${kph(40)} km/h, steerAssist ${assist}:`, r.drift === null ? 'grip' : 'drift', `slip ${Math.abs(r.car.slip * 57.3).toFixed(0)}°`);
 }
+
+// handbrake in a drift: the rear wheels lock and the angle hold lets go; a short hold swings the car wider and
+// the drift catches it again, a long one spins it out
+{
+  const kb = (s, target, dt) => { const rate = target === 0 || Math.sign(target) !== Math.sign(s) ? 9 : 4.5; return s + Math.max(-rate * dt, Math.min(rate * dt, target - s)); };
+  for (const hold of [0.3, 0.6, 1.0]) {
+    const car = fresh(); const sp = flat.spawnFor(flat.start); car.reset(sp.pos, sp.q, 30);
+    for (let i = 0; i < 60; i++) car.step(1 / 240, { throttle: 1 }, flat);
+    let s = 0, maxA = 0;
+    for (let i = 0; i < 240 * 4; i++) {
+      const t = i / 240; s = kb(s, 1, 1 / 240);
+      const hb = (t > 0.1 && t < 0.25) || (t > 1 && t < 1 + hold) ? 1 : 0;
+      car.step(1 / 240, { throttle: 1, steer: s, steerAssist: true, handbrake: hb }, flat);
+      const f = car.fwd; maxA = Math.max(maxA, Math.abs(57.3 * Math.atan2(M.dot(car.vel, M.cross(f, car.up)), M.dot(car.vel, f))));
+    }
+    console.log(`drift, handbrake held ${hold} s:`.padEnd(36), `max angle ${maxA.toFixed(0)}°, ${car.drifting ? 'still drifting' : 'spun out'}, end ${kph(car.speed)} km/h`);
+  }
+}

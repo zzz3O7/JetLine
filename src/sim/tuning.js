@@ -11,7 +11,7 @@
       engineForce: 14000,     // N at the rear wheels, fades out at engineTopSpeed
       engineTopSpeed: 75,     // m/s
       brakeForce: 16000,      // N, wheel brakes
-      handbrakeForce: 9000,   // N, handbrake on the rear wheels (also starts drifts)
+      handbrakeGrip: 0.8,     // the handbrake locks the rear wheels: they slide with this share of their grip
       reverseForce: 5000,     // N
       rollRes: 4,             // rolling resistance per wheel, N per m/s
     },
