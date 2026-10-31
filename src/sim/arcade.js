@@ -53,6 +53,8 @@
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
 
       const anyBrake = Math.max(inp.brake || 0, inp.handbrake || 0);
+      // analog steering pushed past driftOversteer into the drift lets go of the angle, like the handbrake
+      car.overSteering = car.drifting && inp.steerAssist === false && (inp.steer || 0) * car.driftDir > t.driftOversteer;
       car.brakeBuf = car.drifting && anyBrake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
@@ -81,8 +83,10 @@
       } else {
         car.driftTimer += dt;
         // handbrake released while the car is rotated past the drift range: the drift is over (spin out)
-        if (car.hbHeld && !(inp.handbrake > 0.5) && Math.abs(beta) > t.driftMaxAngle) car.drifting = false;
-        car.hbHeld = inp.handbrake > 0.5;
+        // handbrake let go (or an over-steer backed off) while rotated past the drift range: the drift is over
+        const letGo = inp.handbrake > 0.5 || car.overSteering;
+        if (car.hbHeld && !letGo && Math.abs(beta) > t.driftMaxAngle) car.drifting = false;
+        car.hbHeld = letGo;
         // a short grace period after the start, so a drift starting nearly straight can be widened
         const exit = t.driftControl >= 0.5
           ? (Math.abs(steerIn) < 0.15 || Math.sign(steerIn) !== car.driftDir) && Math.abs(beta) < 0.16
@@ -92,7 +96,9 @@
     },
 
     // How drifting changes the tire model (identity values when not drifting).
-    tireMods(t, drifting) {
+    tireMods(t, drifting, car) {
+      // over-steering (analog, in a drift): plain tires with a looser rear, so the car can rotate past the drift
+      if (car && car.overSteering) return { rearGripMul: t.oversteerRearGrip, brakeMul: 1, drivePastGrip: null, scrubKeep: 0 };
       return drifting
         ? { rearGripMul: t.driftGrip, brakeMul: 0.2, drivePastGrip: t.driftPower, scrubKeep: t.driftKeep }
         : { rearGripMul: 1, brakeMul: 1, drivePastGrip: null, scrubKeep: 0 };
@@ -120,14 +126,16 @@
       }
       const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
       if (grounded >= 2 && Math.abs(vf) > 8) {
-        if (car.drifting && inp.handbrake > 0.5) {
+        if (car.drifting && (inp.handbrake > 0.5 || car.overSteering)) {
           // handbrake held in a drift: the rear wheels are locked and the angle hold lets go, so the car rotates
           // on its own momentum (steering and throttle push it on); let go in time and the hold catches it again
         } else if (car.drifting) {
           const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
           if (t.driftControl >= 0.5) {
             // steering sets the angle: full steering = driftTargetAngle, releasing straightens the car
-            car.driftAngle = k > 0.15 ? t.driftTargetAngle * (0.35 + 0.65 * k) : 0;
+            // analog input reaches the full angle at driftOversteer (past it the hold lets go)
+            const kk = inp.steerAssist === false ? Math.min(1, k / t.driftOversteer) : k;
+            car.driftAngle = k > 0.15 ? t.driftTargetAngle * (0.35 + 0.65 * kk) : 0;
           } else {
             // the angle is the player's: steering into the drift widens it, steering out narrows it, no input holds it
             car.driftAngle = Math.max(0, Math.min(t.driftMaxAngle, car.driftAngle + k * t.driftSteerRate * dt));
@@ -177,8 +185,10 @@
           const rollIn = Math.max(-1, Math.min(1, (inp.roll || 0) + (t.airYaw > 0 ? 0 : (inp.steer || 0))));
           M.axpy(w, fwd, rollIn * t.airRoll * ctl * dt);
         }
-        const k = Math.max(0, 1 - t.airDamping * dt);
-        w[0] *= k; w[1] *= k; w[2] *= k;
+        // damping: pitch and roll as before, much lighter around the up axis so flat spins carry on
+        const k = Math.max(0, 1 - t.airDamping * dt), ky = Math.max(0, 1 - t.airYawDamping * dt);
+        const wy = M.dot(w, up);
+        for (let i = 0; i < 3; i++) w[i] = (w[i] - up[i] * wy) * k + up[i] * wy * ky;
       } else car.airTime = 0;
     },
   };

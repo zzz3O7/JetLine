@@ -31,7 +31,7 @@
       for (const w of this.wheels) { w.comp = w.prevComp = 0; w.contact = false; }
       this.grounded = 0; this.bodyContact = false; this.airTime = 0; this.flaps = 0; this.jetLevel = 0;
       this.fuel = 1; this.hullPrev = null; this.drifting = false; this.driftTimer = 0; this.driftDir = 0;
-      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99; this.brakeBuf = 0; this.hbHeld = false;
+      this.driftAngle = 0; this.slideTimer = 0; this.landTimer = 0; this.sinceDrift = 99; this.brakeBuf = 0; this.hbHeld = false; this.overSteering = false;
     }
 
     step(dt, inp, world) {
@@ -54,7 +54,7 @@
       this.prevBeta = this.slip; this.slip = beta;
       A.updateDrift(t, this, inp, grounded, vf, beta, dt);
       // handbrake held: plain tires (no drift speed keeping), so the car rotates freely on locked rear wheels
-      const mods = A.tireMods(t, this.drifting && !(inp.handbrake > 0.5));
+      const mods = A.tireMods(t, this.drifting && !(inp.handbrake > 0.5) && !this.overSteering, this);
 
       // 3. wheel forces
       const tireCtx = { fwd, right, down, steerAng, vf, speed };

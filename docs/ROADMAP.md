@@ -29,6 +29,9 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
 - [x] Handbrake locks the rear wheels (S while steering on keyboard, Alt where the browser allows it). In a drift
       it releases the angle hold while pressed: a short press swings the car wider and the drift catches it again,
       too long spins you out. Rotation built on the ground carries on in the air (spin before a ramp).
+- [x] Flat spins carry on in the air (light yaw damping, airYawDamping), so a spin before a ramp keeps turning.
+- [x] Stick / tilt: steering past 90% into a drift works like the handbrake (looser rear, the hold lets go),
+      so phones and gamepads can spin out by steering.
 - [ ] Playtest; tune the catch range (driftMaxAngle) and how hard the locked wheels slide (handbrakeGrip).
 
 ## 3. Cars
