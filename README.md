@@ -7,6 +7,7 @@ and a skate-park arena, with jets, air brakes that work as wings, drifting and a
 - `npm test` runs the physics tests headlessly in Node and checks behavior against the recorded baseline.
 - `python3 test/browser-smoke.py` loads the built page in headless Chromium (needs Playwright and `npm install` for three.js).
 - How the code is organized, and how it maps to a Unity port: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- What comes next: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Controls: W/S throttle and brake (in the air with the air brakes held: pitch), A/D steer (in the air: roll),
 Shift jet, Space air brakes (hold in a corner for a tight grip turn), tap S while steering to drift (in a drift the steering sets the angle; let go or countersteer to straighten out, countersteer + tap S to switch sides), Enter back to checkpoint, R restart,
