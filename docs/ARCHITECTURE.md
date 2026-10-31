@@ -13,7 +13,7 @@ rendering, input and UI are a separate layer on top.
 | `src/track/world.js` | engine, **prototype** | raycasts and point queries against track boxes | **deleted**: `MeshCollider` + `Physics.Raycast` |
 | `src/sim/vehicle.js` | vehicle | raycast wheels, suspension, tires, engine and brakes, jet and fuel | ports: `AddForceAtPosition` in `FixedUpdate` |
 | `src/sim/aero.js` | vehicle | drag, ground effect, air brake flaps, flat-plate lift, tail fin | ports as is |
-| `src/sim/arcade.js` | gameplay | steering limit, drift state machine (player-controlled angle), auto drift, roll / anti-spin / loop assists, air control | ports as is |
+| `src/sim/arcade.js` | gameplay | steering limit (every device), drift state machine (player-controlled angle; the handbrake lets go of it), auto drift, roll / anti-spin / loop assists, air control | ports as is |
 | `src/sim/car.js` | glue | runs the layers in a fixed order each step | `CarController.FixedUpdate` |
 | `src/sim/tuning.js` | data | every tunable number, grouped by layer | a `ScriptableObject` |
 | `src/track/geometry.js` | content | level piece list → oriented boxes, gates, centerline; eased curves (curvature ramps in and out) and radius-based corners | mesh generator (visual + collider) |

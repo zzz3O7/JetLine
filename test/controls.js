@@ -44,11 +44,6 @@ for (const [name, inp, tun] of [
   console.log(`air control, ${name}:`.padEnd(36), `pitch rate ${r.toFixed(2)} rad/s`);
 }
 
-// steering limit only for keyboard-style input
-for (const assist of [true, false]) {
-  const r = onFlat(40, () => ({ throttle: 1, steer: 1, steerAssist: assist }), 2, {});
-  console.log(`full steering at ${kph(40)} km/h, steerAssist ${assist}:`, r.drift === null ? 'grip' : 'drift', `slip ${Math.abs(r.car.slip * 57.3).toFixed(0)}°`);
-}
 
 // handbrake in a drift: the rear wheels lock and the angle hold lets go; a short hold swings the car wider and
 // the drift catches it again, a long one spins it out
@@ -61,7 +56,7 @@ for (const assist of [true, false]) {
     for (let i = 0; i < 240 * 4; i++) {
       const t = i / 240; s = kb(s, 1, 1 / 240);
       const hb = (t > 0.1 && t < 0.25) || (t > 1 && t < 1 + hold) ? 1 : 0;
-      car.step(1 / 240, { throttle: 1, steer: s, steerAssist: true, handbrake: hb }, flat);
+      car.step(1 / 240, { throttle: 1, steer: s, handbrake: hb }, flat);
       const f = car.fwd; maxA = Math.max(maxA, Math.abs(57.3 * Math.atan2(M.dot(car.vel, M.cross(f, car.up)), M.dot(car.vel, f))));
     }
     console.log(`drift, handbrake held ${hold} s:`.padEnd(36), `max angle ${maxA.toFixed(0)}°, ${car.drifting ? 'still drifting' : 'spun out'}, end ${kph(car.speed)} km/h`);
@@ -76,11 +71,3 @@ for (const assist of [true, false]) {
   console.log('flat spin in the air, 2.5 rad/s for 2 s:', `rotated ${(yaw * 57.3).toFixed(0)}°`);
 }
 
-// analog full lock from a straight line starts a drift
-for (const v of [14, 25]) {
-  const car = fresh(); const sp = flat.spawnFor(flat.start); car.reset(sp.pos, sp.q, v);
-  for (let i = 0; i < 60; i++) car.step(1 / 240, { throttle: 1 }, flat);
-  let drift = null;
-  for (let i = 0; i < 240 * 3; i++) { const t = i / 240; car.step(1 / 240, { throttle: 1, steer: t < 0.3 ? 0 : 1, steerAssist: false }, flat); if (car.drifting && drift === null) drift = t; }
-  console.log(`analog full lock from straight, ${kph(v)} km/h:`.padEnd(40), drift === null ? 'no drift' : `drift at ${drift.toFixed(2)} s, ${car.drifting ? 'still drifting' : 'ended'} after 3 s`);
-}

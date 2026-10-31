@@ -54,8 +54,7 @@
       airPitch: 5.5,          // rad/s^2
       airYaw: 0,              // rad/s^2 (0: steering rolls instead)
       airRoll: 4.5,           // rad/s^2
-      airDamping: 0.8,        // angular damping in the air for pitch and roll (1/s)
-      airYawDamping: 0.15,    // angular damping in the air around the car's up axis (1/s): flat spins carry on
+      airDamping: 0.15,       // rotation damping in the air, every axis (1/s): flips and flat spins carry on
       airControlBase: 0,      // share of air control with neither air brakes nor jet (0 = no control)
       jetAirControl: 1,       // share of air control while the jet is firing (no fuel, no control)
     },
@@ -65,7 +64,6 @@
       driftKick: 0,           // rad: a brake-tap drift starts at least this sideways
       driftSteerRate: 3,      // rad/s: how fast A/D change the drift angle (driftControl 0)
       driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
-      driftOversteer: 0.9,    // analog steering (stick, tilt) past this starts a drift, like a brake tap on the keyboard
       driftMaxAngle: 1.1,     // rad (about 63 degrees)
       driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
       driftRecover: 0,        // countersteering straightens a drift this much faster (x stiffness at full countersteer)

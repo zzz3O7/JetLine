@@ -358,7 +358,7 @@ const touch = { gas: 0, brake: 0, jet: 0, air: 0, left: 0, right: 0 };
 let tilt = { on: false, value: 0 };
 let steerKb = 0;
 // The player's intents for the sim. Devices (keyboard, touch, gamepad, tilt) are translated into these in updateInput.
-const input = { throttle: 0, brake: 0, handbrake: 0, steer: 0, steerAssist: true, jet: false, airbrake: false, pitch: 0, roll: 0 };
+const input = { throttle: 0, brake: 0, handbrake: 0, steer: 0, jet: false, airbrake: false, pitch: 0, roll: 0 };
 
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -408,12 +408,11 @@ function updateInput(dt) {
   input.throttle = Math.max(kThr, touch.gas, gp ? gp.throttle : 0);
   input.brake = Math.max(kBrk, touch.brake, gp ? gp.brake : 0);
   input.handbrake = Math.max(kd('AltLeft', 'AltRight') ? 1 : 0, gp ? gp.handbrake : 0);
-  // keys and touch arrows are on/off, so they get the steering limit; tilt and sticks are analog and don't
-  let steer = steerKb, assist = true;
-  if (tilt.on && Math.abs(tilt.value) > 0.02) { steer += tilt.value; assist = false; }
-  if (gp && Math.abs(gp.steer) > Math.abs(steer)) { steer = gp.steer; assist = false; }
+  // every device plays by the same rules: the steering limit applies to keys, sticks and tilt alike
+  let steer = steerKb;
+  if (tilt.on) steer += tilt.value;
+  if (gp && Math.abs(gp.steer) > Math.abs(steer)) steer = gp.steer;
   input.steer = Math.max(-1, Math.min(1, steer));
-  input.steerAssist = assist;
   input.jet = kd('ShiftLeft', 'ShiftRight') || !!touch.jet || !!(gp && gp.jet);
   input.airbrake = kd('Space') || !!touch.air || !!(gp && gp.air);
   // in the air: W / gas / stick up = nose up (arcade style); "Flight-sim pitch" flips it
@@ -606,8 +605,7 @@ const SLIDERS = {
   airRoll: ['Roll control', 0, 10, 0.25],
   airControlBase: ['Control without air brakes or jet', 0, 1, 0.05],
   jetAirControl: ['Air control while the jet fires', 0, 1, 0.05],
-  airDamping: ['Rotation damping (pitch, roll)', 0, 4, 0.05],
-  airYawDamping: ['Rotation damping (flat spins)', 0, 2, 0.05],
+  airDamping: ['Rotation damping (every axis)', 0, 4, 0.05],
   driftGrip: ['Rear grip', 0.15, 1, 0.01],
   driftControl: ['Control: 0 = hold turns angle, 1 = steering sets angle', 0, 1, 1],
   driftKick: ['Brake-tap kick angle (rad)', 0, 0.8, 0.01],
@@ -616,7 +614,6 @@ const SLIDERS = {
   driftRecover: ['Countersteer straightens faster (x)', 0, 4, 0.25],
   driftCatch: ['Catch after a drift ends (s, 0 = off)', 0, 1.5, 0.05],
   driftMaxAngle: ['Max angle (rad)', 0.4, 1.4, 0.01],
-  driftOversteer: ['Stick / tilt past this starts a drift', 0.5, 1, 0.01],
   driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
   driftCarve: ['Carve into the turn', 0, 5, 0.1],
   driftKeep: ['Speed kept', 0, 1, 0.01],

@@ -14,7 +14,7 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
 ## 1. Controls and air brake rules (PC)
 - [x] Input layer: the game core only sees intents (steer, throttle, brake, jet, air brake, handbrake);
       keyboard input is translated into them in one place, so a phone or gamepad port later doesn't
-      touch the physics. Steering limit stays a keyboard setting.
+      touch the physics. The steering limit applies to every device (same rules everywhere).
 - [x] Handbrake on **Alt**: a tap while steering starts a drift, holding it brakes the rear wheels.
       S still starts drifts too (and stays brake / reverse). If a browser misbehaves with Alt, S covers it.
 - [x] Air brakes in the air: drag plus air control. Keep the current lift (gliding) for now.
@@ -29,9 +29,12 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
 - [x] Handbrake locks the rear wheels (S while steering on keyboard, Alt where the browser allows it). In a drift
       it releases the angle hold while pressed: a short press swings the car wider and the drift catches it again,
       too long spins you out. Rotation built on the ground carries on in the air (spin before a ramp).
-- [x] Flat spins carry on in the air (light yaw damping, airYawDamping), so a spin before a ramp keeps turning.
-- [x] Stick / tilt: steering past 90% starts a drift (the analog version of tapping S). (A stick spin-out in a
-      drift was tried and removed: too sudden.)
+- [x] Rotation in the air carries on: one light damping on every axis (airDamping 0.15), so a spin before a
+      ramp keeps turning. Side effect: rotation left over from loops and quarter pipes carries on too (two scripted
+      skate park lines now land on the roof); from 0.45 up they land on their wheels.
+- [x] Same rules on every device: drifts start with the button (handbrake, or brake + steering), and the steering
+      limit applies to sticks and tilt too. (Tried and removed: a stick past 90% starting a drift - unfair to
+      keyboards - and a stick spin-out in a drift - too sudden.)
 - [ ] Playtest; tune the catch range (driftMaxAngle) and how hard the locked wheels slide (handbrakeGrip).
 
 ## 3. Cars
@@ -53,11 +56,11 @@ Tracks are designed around a car's specialty, so the cars come first.
 
 ### Phone and gamepad port (decisions so far)
 - Same physics and the same drift as PC; only the input mapping differs.
-- No steering limit on phone or gamepad: analog steering past 90% starts drifts.
+- Same rules as PC: the steering limit applies, drifts start with the handbrake (or brake + steering).
 - Phone: tilt-only steering (no fallback buttons). On the ground tilt steers; in the air it rolls and
   pitches, gas / reverse are not involved. Calibration: neutral position, sensitivity, pitch invert,
   landscape lock, iPhone motion permission (needs HTTPS).
 - Phone layout: boost, air brake and handbrake under the left thumb; gas and reverse under the right;
   a back-to-checkpoint button; restart and menu at the top.
-- Gamepads behave like phones (analog, no steering limit).
+- Gamepads play by the same rules (X is the handbrake).
 - A simulated-tilt test driver in CI.

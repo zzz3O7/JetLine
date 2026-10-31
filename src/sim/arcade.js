@@ -23,7 +23,7 @@
     // drifting (the drift assists own the car then), for STEER_LIMIT_AFTER_DRIFT s after a drift so a flick
     // into the next drift stays the player's, when slow, and in reverse.
     limitSteer(t, car, inp, steerAng, fwd, right, vf) {
-      if (t.steerLimit <= 0 || inp.steerAssist === false || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
+      if (t.steerLimit <= 0 || car.drifting || car.sinceDrift < STEER_LIMIT_AFTER_DRIFT || vf < 5 || steerAng === 0) return steerAng;
       const vF = M.add(car.vel, M.cross(car.w, M.mul(fwd, FRONT_AXLE)));
       const dir = Math.atan2(M.dot(vF, right), Math.max(M.dot(vF, fwd), 4)); // same low-speed floor as the tire model
       let L = t.steerLimit * t.slipPeak;
@@ -53,13 +53,11 @@
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
 
       const anyBrake = Math.max(inp.brake || 0, inp.handbrake || 0);
-      // analog steering (stick, tilt) past driftOversteer starts a drift, like a brake tap on the keyboard
-      const over = inp.steerAssist === false && Math.abs(inp.steer || 0) > t.driftOversteer;
       car.brakeBuf = car.drifting && anyBrake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
         car.slideTimer = Math.abs(beta) > t.autoDriftAngle && grounded >= 2 ? (car.slideTimer || 0) + dt : 0;
-        if (grounded >= 3 && vf > t.driftMinSpeed && ((Math.abs(steerIn) > 0.4 && anyBrake > 0.5) || over)) {
+        if (grounded >= 3 && vf > t.driftMinSpeed && ((Math.abs(steerIn) > 0.4 && anyBrake > 0.5))) {
           const dir = Math.sign(steerIn);
           start(dir, Math.max(t.driftKick, -dir * beta));
         } else if (t.autoDrift >= 0.5 && grounded >= 2 && vf > t.driftMinSpeed * 0.7 && Math.abs(beta) > t.autoDriftAngle && Math.abs(beta) < 1.5) {
@@ -180,10 +178,9 @@
           const rollIn = Math.max(-1, Math.min(1, (inp.roll || 0) + (t.airYaw > 0 ? 0 : (inp.steer || 0))));
           M.axpy(w, fwd, rollIn * t.airRoll * ctl * dt);
         }
-        // damping: pitch and roll as before, much lighter around the up axis so flat spins carry on
-        const k = Math.max(0, 1 - t.airDamping * dt), ky = Math.max(0, 1 - t.airYawDamping * dt);
-        const wy = M.dot(w, up);
-        for (let i = 0; i < 3; i++) w[i] = (w[i] - up[i] * wy) * k + up[i] * wy * ky;
+        // rotation damping, the same on every axis (light, so flips and flat spins carry on)
+        const k = Math.max(0, 1 - t.airDamping * dt);
+        w[0] *= k; w[1] *= k; w[2] *= k;
       } else car.airTime = 0;
     },
   };
