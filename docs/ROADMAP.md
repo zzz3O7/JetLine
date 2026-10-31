@@ -30,8 +30,9 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
       it releases the angle hold while pressed: a short press swings the car wider and the drift catches it again,
       too long spins you out. Rotation built on the ground carries on in the air (spin before a ramp).
 - [x] Flat spins carry on in the air (light yaw damping, airYawDamping), so a spin before a ramp keeps turning.
-- [x] Stick / tilt: steering past 90% into a drift works like the handbrake (looser rear, the hold lets go),
-      so phones and gamepads can spin out by steering.
+- [x] Stick / tilt: steering past 90% starts a drift (the analog version of tapping S). In a drift, after easing
+      back below 90% once, pushing past it again works like the handbrake (looser rear, the hold lets go): a short
+      push swings wider, holding it spins out.
 - [ ] Playtest; tune the catch range (driftMaxAngle) and how hard the locked wheels slide (handbrakeGrip).
 
 ## 3. Cars

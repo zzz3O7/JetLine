@@ -89,3 +89,13 @@ for (const assist of [true, false]) {
   for (let i = 0; i < 480; i++) { car.step(1 / 240, { throttle: 1 }, open); const h = Math.atan2(car.fwd[0], car.fwd[2]); let d = h - prevH; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d; prevH = h; }
   console.log('flat spin in the air, 2.5 rad/s for 2 s:', `rotated ${(yaw * 57.3).toFixed(0)}°`);
 }
+
+// analog full lock from a straight line starts a drift (keeping it there doesn't spin out: the spin-out re-arms
+// only after easing back below driftOversteer)
+for (const v of [14, 25]) {
+  const car = fresh(); const sp = flat.spawnFor(flat.start); car.reset(sp.pos, sp.q, v);
+  for (let i = 0; i < 60; i++) car.step(1 / 240, { throttle: 1 }, flat);
+  let drift = null;
+  for (let i = 0; i < 240 * 3; i++) { const t = i / 240; car.step(1 / 240, { throttle: 1, steer: t < 0.3 ? 0 : 1, steerAssist: false }, flat); if (car.drifting && drift === null) drift = t; }
+  console.log(`analog full lock from straight, ${kph(v)} km/h:`.padEnd(40), drift === null ? 'no drift' : `drift at ${drift.toFixed(2)} s, ${car.drifting ? 'still drifting' : 'ended'} after 3 s`);
+}

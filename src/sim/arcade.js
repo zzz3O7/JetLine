@@ -47,19 +47,23 @@
     updateDrift(t, car, inp, grounded, vf, beta, dt) {
       const steerIn = inp.steer || 0;
       const start = (dir, angle) => {
-        car.drifting = true; car.driftDir = dir; car.driftTimer = 0; car.hbHeld = inp.handbrake > 0.5;
+        car.drifting = true; car.driftDir = dir; car.driftTimer = 0; car.hbHeld = inp.handbrake > 0.5; car.overArmed = false;
         car.driftAngle = Math.min(t.driftMaxAngle, angle);
       };
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
 
       const anyBrake = Math.max(inp.brake || 0, inp.handbrake || 0);
-      // analog steering pushed past driftOversteer into the drift lets go of the angle, like the handbrake
-      car.overSteering = car.drifting && inp.steerAssist === false && (inp.steer || 0) * car.driftDir > t.driftOversteer;
+      // analog steering (stick, tilt) past driftOversteer: outside a drift it starts one (like a brake tap); in a
+      // drift it lets go of the angle like the handbrake - but only once the stick has eased back below it after
+      // the drift started (re-arm), so the flick that starts a drift doesn't spin it out right away
+      const analog = inp.steerAssist === false, over = analog && (inp.steer || 0) * (car.drifting ? car.driftDir : Math.sign(inp.steer || 0)) > t.driftOversteer;
+      if (car.drifting && analog && !over) car.overArmed = true;
+      car.overSteering = car.drifting && over && car.overArmed;
       car.brakeBuf = car.drifting && anyBrake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
         car.slideTimer = Math.abs(beta) > t.autoDriftAngle && grounded >= 2 ? (car.slideTimer || 0) + dt : 0;
-        if (grounded >= 3 && vf > t.driftMinSpeed && Math.abs(steerIn) > 0.4 && anyBrake > 0.5) {
+        if (grounded >= 3 && vf > t.driftMinSpeed && ((Math.abs(steerIn) > 0.4 && anyBrake > 0.5) || over)) {
           const dir = Math.sign(steerIn);
           start(dir, Math.max(t.driftKick, -dir * beta));
         } else if (t.autoDrift >= 0.5 && grounded >= 2 && vf > t.driftMinSpeed * 0.7 && Math.abs(beta) > t.autoDriftAngle && Math.abs(beta) < 1.5) {
