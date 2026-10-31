@@ -65,8 +65,7 @@
       driftKick: 0,           // rad: a brake-tap drift starts at least this sideways
       driftSteerRate: 3,      // rad/s: how fast A/D change the drift angle (driftControl 0)
       driftTargetAngle: 0.6,  // rad: angle at full steering (driftControl 1)
-      driftOversteer: 0.9,    // analog steering (stick, tilt) past this into a drift lets the angle hold go, like the handbrake
-      oversteerRearGrip: 0.5, // rear grip while over-steering past driftOversteer (looser rear: the car rotates on)
+      driftOversteer: 0.9,    // analog steering (stick, tilt) past this starts a drift, like a brake tap on the keyboard
       driftMaxAngle: 1.1,     // rad (about 63 degrees)
       driftExitAngle: 0.07,   // rad: steer the angle below this to end the drift
       driftRecover: 0,        // countersteering straightens a drift this much faster (x stiffness at full countersteer)

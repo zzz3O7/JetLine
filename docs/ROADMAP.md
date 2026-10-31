@@ -30,9 +30,8 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
       it releases the angle hold while pressed: a short press swings the car wider and the drift catches it again,
       too long spins you out. Rotation built on the ground carries on in the air (spin before a ramp).
 - [x] Flat spins carry on in the air (light yaw damping, airYawDamping), so a spin before a ramp keeps turning.
-- [x] Stick / tilt: steering past 90% starts a drift (the analog version of tapping S). In a drift, after easing
-      back below 90% once, pushing past it again works like the handbrake (looser rear, the hold lets go): a short
-      push swings wider, holding it spins out.
+- [x] Stick / tilt: steering past 90% starts a drift (the analog version of tapping S). (A stick spin-out in a
+      drift was tried and removed: too sudden.)
 - [ ] Playtest; tune the catch range (driftMaxAngle) and how hard the locked wheels slide (handbrakeGrip).
 
 ## 3. Cars
@@ -54,7 +53,7 @@ Tracks are designed around a car's specialty, so the cars come first.
 
 ### Phone and gamepad port (decisions so far)
 - Same physics and the same drift as PC; only the input mapping differs.
-- No steering limit on phone or gamepad: analog steering, so oversteering starts drifts (and can spin).
+- No steering limit on phone or gamepad: analog steering past 90% starts drifts.
 - Phone: tilt-only steering (no fallback buttons). On the ground tilt steers; in the air it rolls and
   pitches, gas / reverse are not involved. Calibration: neutral position, sensitivity, pitch invert,
   landscape lock, iPhone motion permission (needs HTTPS).

@@ -313,9 +313,6 @@ full steering at 144 km/h, steerAssist false: drift slip 32°
 drift, handbrake held 0.3 s:         max angle 61°, still drifting, end 129 km/h
 drift, handbrake held 0.6 s:         max angle 165°, spun out, end 16 km/h
 drift, handbrake held 1 s:           max angle 169°, spun out, end 23 km/h
-analog drift at 70%, full lock for 0 s:  max angle 29°, still drifting
-analog drift at 70%, full lock for 0.3 s: max angle 55°, still drifting
-analog drift at 70%, full lock for 0.6 s: max angle 172°, spun out
 flat spin in the air, 2.5 rad/s for 2 s: rotated 239°
 analog full lock from straight, 50 km/h: drift at 0.30 s, still drifting after 3 s
 analog full lock from straight, 90 km/h: drift at 0.30 s, still drifting after 3 s

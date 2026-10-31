@@ -47,18 +47,14 @@
     updateDrift(t, car, inp, grounded, vf, beta, dt) {
       const steerIn = inp.steer || 0;
       const start = (dir, angle) => {
-        car.drifting = true; car.driftDir = dir; car.driftTimer = 0; car.hbHeld = inp.handbrake > 0.5; car.overArmed = false;
+        car.drifting = true; car.driftDir = dir; car.driftTimer = 0; car.hbHeld = inp.handbrake > 0.5;
         car.driftAngle = Math.min(t.driftMaxAngle, angle);
       };
       car.sinceDrift = car.drifting ? 0 : (car.sinceDrift || 0) + dt;
 
       const anyBrake = Math.max(inp.brake || 0, inp.handbrake || 0);
-      // analog steering (stick, tilt) past driftOversteer: outside a drift it starts one (like a brake tap); in a
-      // drift it lets go of the angle like the handbrake - but only once the stick has eased back below it after
-      // the drift started (re-arm), so the flick that starts a drift doesn't spin it out right away
-      const analog = inp.steerAssist === false, over = analog && (inp.steer || 0) * (car.drifting ? car.driftDir : Math.sign(inp.steer || 0)) > t.driftOversteer;
-      if (car.drifting && analog && !over) car.overArmed = true;
-      car.overSteering = car.drifting && over && car.overArmed;
+      // analog steering (stick, tilt) past driftOversteer starts a drift, like a brake tap on the keyboard
+      const over = inp.steerAssist === false && Math.abs(inp.steer || 0) > t.driftOversteer;
       car.brakeBuf = car.drifting && anyBrake > 0.5 ? SWITCH_BUFFER : Math.max(0, (car.brakeBuf || 0) - dt);
       if (!car.drifting) {
         // how long the car has been sliding past the auto-drift angle (filters out bump spikes)
@@ -87,10 +83,9 @@
       } else {
         car.driftTimer += dt;
         // handbrake released while the car is rotated past the drift range: the drift is over (spin out)
-        // handbrake let go (or an over-steer backed off) while rotated past the drift range: the drift is over
-        const letGo = inp.handbrake > 0.5 || car.overSteering;
-        if (car.hbHeld && !letGo && Math.abs(beta) > t.driftMaxAngle) car.drifting = false;
-        car.hbHeld = letGo;
+        // handbrake let go while rotated past the drift range: the drift is over (spin out)
+        if (car.hbHeld && !(inp.handbrake > 0.5) && Math.abs(beta) > t.driftMaxAngle) car.drifting = false;
+        car.hbHeld = inp.handbrake > 0.5;
         // a short grace period after the start, so a drift starting nearly straight can be widened
         const exit = t.driftControl >= 0.5
           ? (Math.abs(steerIn) < 0.15 || Math.sign(steerIn) !== car.driftDir) && Math.abs(beta) < 0.16
@@ -100,9 +95,7 @@
     },
 
     // How drifting changes the tire model (identity values when not drifting).
-    tireMods(t, drifting, car) {
-      // over-steering (analog, in a drift): plain tires with a looser rear, so the car can rotate past the drift
-      if (car && car.overSteering) return { rearGripMul: t.oversteerRearGrip, brakeMul: 1, drivePastGrip: null, scrubKeep: 0 };
+    tireMods(t, drifting) {
       return drifting
         ? { rearGripMul: t.driftGrip, brakeMul: 0.2, drivePastGrip: t.driftPower, scrubKeep: t.driftKeep }
         : { rearGripMul: 1, brakeMul: 1, drivePastGrip: null, scrubKeep: 0 };
@@ -130,16 +123,14 @@
       }
       const dBeta = car.prevBeta === undefined ? 0 : (beta - car.prevBeta) / dt;
       if (grounded >= 2 && Math.abs(vf) > 8) {
-        if (car.drifting && (inp.handbrake > 0.5 || car.overSteering)) {
+        if (car.drifting && inp.handbrake > 0.5) {
           // handbrake held in a drift: the rear wheels are locked and the angle hold lets go, so the car rotates
           // on its own momentum (steering and throttle push it on); let go in time and the hold catches it again
         } else if (car.drifting) {
           const k = (inp.steer || 0) * car.driftDir; // > 0 = steering into the drift
           if (t.driftControl >= 0.5) {
             // steering sets the angle: full steering = driftTargetAngle, releasing straightens the car
-            // analog input reaches the full angle at driftOversteer (past it the hold lets go)
-            const kk = inp.steerAssist === false ? Math.min(1, k / t.driftOversteer) : k;
-            car.driftAngle = k > 0.15 ? t.driftTargetAngle * (0.35 + 0.65 * kk) : 0;
+            car.driftAngle = k > 0.15 ? t.driftTargetAngle * (0.35 + 0.65 * k) : 0;
           } else {
             // the angle is the player's: steering into the drift widens it, steering out narrows it, no input holds it
             car.driftAngle = Math.max(0, Math.min(t.driftMaxAngle, car.driftAngle + k * t.driftSteerRate * dt));
