@@ -18,9 +18,10 @@ function exit(v, pattern, tun = {}) {
     s = kb(s, inp.steer, 1 / 240);
     car.step(1 / 240, { steer: s, throttle: 1, brake: inp.brake || 0 }, w);
     if (t >= 2) {
-      if (ended === null && (!car.drifting || car.driftDir < 0)) ended = t - 2;
+      // out: the old drift is over (the car is straight, or not drifting); then: does it slide 10 degrees the other way?
+      if (ended === null && (!car.drifting || car.slip * 57.3 > -3)) ended = t - 2;
       if (ended !== null) swing = Math.max(swing, car.slip * 57.3);
-      if (ended !== null && car.drifting && again === null) again = (car.driftDir < 0 ? 'L' : 'R') + (t - 2).toFixed(2);
+      if (ended !== null && car.drifting && car.slip * 57.3 > 10 && again === null) again = 'L' + (t - 2).toFixed(2);
     }
   }
   return `out ${ended === null ? 'never' : ended.toFixed(2) + 's'}  swing ${swing.toFixed(0)}°  ${again ? 'drift ' + again : 'stays out'}`;
