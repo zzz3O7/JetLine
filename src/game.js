@@ -615,6 +615,8 @@ const SLIDERS = {
   driftCatch: ['Catch after a drift ends (s, 0 = off)', 0, 1.5, 0.05],
   driftMaxAngle: ['Max angle (rad)', 0.4, 1.4, 0.01],
   driftExitAngle: ['Exit below angle (rad)', 0.02, 0.3, 0.01],
+  driftCarveExit: ['Carve kept while straightening out', 0, 1, 0.05],
+  driftExitBlend: ['Exit: tires fade back below angle (rad)', 0, 1, 0.01],
   driftCarve: ['Carve into the turn', 0, 5, 0.1],
   driftKeep: ['Speed kept', 0, 1, 0.01],
   driftPower: ['Engine push in a slide', 0, 1.5, 0.05],

@@ -35,6 +35,8 @@ Steps are in build order; each builds on the ones before it. Tick them off as PR
 - [x] Same rules on every device: drifts start with the button (handbrake, or brake + steering), and the steering
       limit applies to sticks and tilt too. (Tried and removed: a stick past 90% starting a drift - unfair to
       keyboards - and a stick spin-out in a drift - too sudden.)
+- [x] Smoother drift exits: the carve stops as soon as you straighten out (no pause while the path keeps curving),
+      and the drift tires fade back to normal as the angle closes (no snap at the end).
 - [ ] Playtest; tune the catch range (driftMaxAngle) and how hard the locked wheels slide (handbrakeGrip).
 
 ## 3. Cars

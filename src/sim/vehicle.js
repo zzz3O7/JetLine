@@ -73,6 +73,7 @@
       let fLong = -vl * t.rollRes;
       const drive = !wh.front && inp.throttle > 0 ? inp.throttle * t.engineForce * 0.5 * Math.max(0, 1 - vl / t.engineTopSpeed) : 0;
       if (mods.drivePastGrip === null) fLong += drive;
+      else if (mods.driveGripShare) fLong += drive * mods.driveGripShare; // part of the drive still bound by grip (drift exit blend)
       if (inp.brake > 0) {
         if (vf > 1.0) fLong -= inp.brake * mods.brakeMul * t.brakeForce * (wh.front ? 0.3 : 0.2) * Math.tanh(vl / 0.5);
         else if (!wh.front) fLong -= inp.brake * t.reverseForce * 0.5 * Math.max(0, 1 + vl / 12);

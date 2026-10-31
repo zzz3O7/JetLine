@@ -54,7 +54,7 @@
       this.prevBeta = this.slip; this.slip = beta;
       A.updateDrift(t, this, inp, grounded, vf, beta, dt);
       // handbrake held: plain tires (no drift speed keeping), so the car rotates freely on locked rear wheels
-      const mods = A.tireMods(t, this.drifting && !(inp.handbrake > 0.5));
+      const mods = A.tireMods(t, this.drifting && !(inp.handbrake > 0.5), this);
 
       // 3. wheel forces
       const tireCtx = { fwd, right, down, steerAng, vf, speed };

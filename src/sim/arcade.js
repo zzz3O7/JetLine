@@ -93,7 +93,12 @@
     },
 
     // How drifting changes the tire model (identity values when not drifting).
-    tireMods(t, drifting) {
+    tireMods(t, drifting, car) {
+      if (drifting && car && t.driftExitBlend > 0 && car.driftAngle === 0) {
+        // straightening out: the drift tires fade back to normal as the angle closes, instead of switching at the end
+        const f = Math.min(1, Math.abs(car.slip || 0) / t.driftExitBlend);
+        return { rearGripMul: 1 + (t.driftGrip - 1) * f, brakeMul: 1 + (0.2 - 1) * f, drivePastGrip: t.driftPower * f, driveGripShare: 1 - f, scrubKeep: t.driftKeep * f };
+      }
       return drifting
         ? { rearGripMul: t.driftGrip, brakeMul: 0.2, drivePastGrip: t.driftPower, scrubKeep: t.driftKeep }
         : { rearGripMul: 1, brakeMul: 1, drivePastGrip: null, scrubKeep: 0 };
@@ -139,7 +144,7 @@
           yawAssist = (target - beta) * 22 * g - dBeta * 8 * Math.sqrt(g);
           // carve: turn the velocity toward the nose, so a drift goes round the corner without losing speed
           // (a wider angle turns tighter)
-          const nv = M.rotAxis(vel, up, beta * t.driftCarve * dt);
+          const nv = M.rotAxis(vel, up, beta * t.driftCarve * (car.driftAngle > 0 ? 1 : t.driftCarveExit) * dt);
           vel[0] = nv[0]; vel[1] = nv[1]; vel[2] = nv[2];
         } else {
           if (t.spinAssist > 0) {
