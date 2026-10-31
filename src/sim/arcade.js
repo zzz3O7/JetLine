@@ -145,7 +145,10 @@
           yawAssist = (target - beta) * 22 * g - dBeta * 8 * Math.sqrt(g);
           // carve: turn the velocity toward the nose, so a drift goes round the corner without losing speed
           // (a wider angle turns tighter)
-          const nv = M.rotAxis(vel, up, beta * t.driftCarve * (car.driftAngle > 0 ? 1 : t.driftCarveExit) * dt);
+          // (only while the car is angled toward the drift's side: right after a switch it still points the old way,
+          // and carving then would keep bending the path into the old turn)
+          const carve = car.driftAngle > 0 ? (beta * car.driftDir < 0 ? 1 : 0) : t.driftCarveExit;
+          const nv = M.rotAxis(vel, up, beta * t.driftCarve * carve * dt);
           vel[0] = nv[0]; vel[1] = nv[1]; vel[2] = nv[2];
         } else {
           if (t.spinAssist > 0) {
